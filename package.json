@@ -13,18 +13,18 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
-    "@opentui/core": "^0.1.61",
-    "@opentui/react": "^0.1.61",
-    "@tanstack/react-router": "^1.141.6",
-    "react": "^19.2.3"
+    "@opentui/core": "^0.1.107",
+    "@opentui/react": "^0.1.107",
+    "@tanstack/react-router": "^1.169.0",
+    "react": "^19.2.5"
   },
   "devDependencies": {
-    "@tanstack/router-cli": "^1.141.7",
+    "@tanstack/router-cli": "^1.166.39",
     "@types/bun": "latest",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   }
 }
