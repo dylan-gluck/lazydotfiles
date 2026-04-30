@@ -4,13 +4,14 @@
   "type": "module",
   "module": "src/index.tsx",
   "scripts": {
-    "generate-routes": "tsr generate",
-    "watch-routes": "tsr watch",
     "dev": "bun run generate-routes && bun run --watch src/index.tsx",
+    "check": "concurrently 'bun fmt' 'bun lint:fix'",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "generate-routes": "tsr generate",
+    "watch-routes": "tsr watch"
   },
   "dependencies": {
     "@opentui/core": "^0.1.107",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@tanstack/router-cli": "^1.166.39",
     "@types/bun": "latest",
+    "concurrently": "^9.2.1",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0"
   },
