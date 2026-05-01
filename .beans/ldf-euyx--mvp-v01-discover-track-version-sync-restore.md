@@ -11,12 +11,14 @@ updated_at: 2026-05-01T04:18:27Z
 End-to-end MVP shipping the round-trip described in PRD-001: discover → track → version → sync → restore, with no data loss and no partial states.
 
 ## Source
+
 - [PRD-001](docs/prds/001_mvp.md) — scope, goals, non-goals, acceptance.
 - [ADR-001](docs/adrs/001_project.md) — layered structure: domain → repository → service → controller → actor → view.
 - [ADR-002](docs/adrs/002_tui.md) — TUI runtime, actor protocol, theme, keymap.
 - [CONSTITUTION](docs/CONSTITUTION.md) — non-negotiables.
 
 ## Goals (PRD §2)
+
 - G1 First-run bootstrap (TUI + config + jj repo, idempotent).
 - G2 Discovery with sibling expansion + auto-track.
 - G3 Atomic add: snapshot → move → symlink → describe, with rollback.
@@ -26,6 +28,7 @@ End-to-end MVP shipping the round-trip described in PRD-001: discover → track 
 - G7 Backup-protected destructive ops; one-keystroke restore.
 
 ## Non-goals (PRD §3)
+
 - N1 Multi-profile selection
 - N2 API-key sanitization
 - N3 Templated dotfiles
@@ -35,9 +38,11 @@ End-to-end MVP shipping the round-trip described in PRD-001: discover → track 
 - N7 Background daemon
 
 ## Acceptance gate (PRD §9)
+
 A1–A9 demonstrably true on a clean account before completion.
 
 ## Build phases (epics)
+
 1. Foundation — composition root, lib, schema, theme, actor runtime, keymap.
 2. Config & Bootstrap — F1.
 3. Repo & VCS adapter — jj git init, Operation stream, SyncState reads.

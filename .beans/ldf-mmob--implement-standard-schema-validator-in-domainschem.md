@@ -1,10 +1,11 @@
 ---
 # ldf-mmob
 title: Implement Standard-Schema validator in domain/schema.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-01T04:23:18Z
-updated_at: 2026-05-01T04:23:18Z
+updated_at: 2026-05-01T15:30:30Z
 parent: ldf-j9pe
 ---
 

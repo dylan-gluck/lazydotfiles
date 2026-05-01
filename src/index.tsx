@@ -1,33 +1,44 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { ActorRuntimeContext } from "./actors/use-actor";
+import type { ActorRuntime } from "./actors/runtime";
+import { wireActors } from "./composition/actors";
+import { wireServices } from "./composition/services";
 import { routeTree } from "./routeTree.gen";
+import { GlobalKeys } from "./views/components/global-keys";
+import { ThemeProvider } from "./views/theme";
 
-// Use memory history since we're in a terminal environment (no browser)
-const memoryHistory = createMemoryHistory({
-  initialEntries: ["/"],
-});
+const services = wireServices({ home: process.env["HOME"] ?? "" });
+const actors = wireActors(services);
 
-// Create router with the generated route tree
 const router = createRouter({
   routeTree,
-  history: memoryHistory,
+  history: createMemoryHistory({ initialEntries: ["/"] }),
+  context: { services, actors },
 });
 
-// Register router for type safety
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
 }
 
-// App component that provides the router
-function App() {
-  return <RouterProvider router={router} />;
-}
-
-// Load the router before rendering (required for initial route matching)
 await router.load();
 
-const renderer = await createCliRenderer();
+const renderer = await createCliRenderer({ exitOnCtrlC: true });
+
+function App() {
+  useEffect(() => () => actors.dispose(), []);
+  return (
+    <ThemeProvider mode="dark">
+      <ActorRuntimeContext.Provider value={actors as unknown as ActorRuntime<unknown>}>
+        <GlobalKeys />
+        <RouterProvider router={router} />
+      </ActorRuntimeContext.Provider>
+    </ThemeProvider>
+  );
+}
+
 createRoot(renderer).render(<App />);
