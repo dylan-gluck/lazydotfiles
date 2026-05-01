@@ -17,6 +17,7 @@ export interface JjRepository {
   // New surface for the adapter layer.
   describe(opts: { root: string; message: string }): Promise<Result<void, RepoError>>;
   snapshot(opts: { root: string }): Promise<Result<void, RepoError>>;
+  newChange(opts: { root: string }): Promise<Result<void, RepoError>>;
   opLog(opts: { root: string; limit?: number }): Promise<Result<readonly Operation[], RepoError>>;
   log(opts: { root: string; limit?: number }): Promise<Result<readonly Operation[], RepoError>>;
   opRestore(opts: { root: string; opId: string }): Promise<Result<void, RepoError>>;
@@ -184,6 +185,11 @@ export function createJjRepository(): JjRepository {
 
     async snapshot({ root }) {
       const r = await runJj(["debug", "snapshot"], { cwd: root });
+      return r.ok ? ok(undefined) : err(r.error);
+    },
+
+    async newChange({ root }) {
+      const r = await runJj(["new"], { cwd: root });
       return r.ok ? ok(undefined) : err(r.error);
     },
 

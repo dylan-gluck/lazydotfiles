@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root";
+import { Route as TrackedRouteImport } from "./routes/tracked";
 import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as DiscoverRouteImport } from "./routes/discover";
 import { Route as AboutRouteImport } from "./routes/about";
 import { Route as IndexRouteImport } from "./routes/index";
 
+const TrackedRoute = TrackedRouteImport.update({
+  id: "/tracked",
+  path: "/tracked",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const SettingsRoute = SettingsRouteImport.update({
   id: "/settings",
   path: "/settings",
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   "/about": typeof AboutRoute;
   "/discover": typeof DiscoverRoute;
   "/settings": typeof SettingsRoute;
+  "/tracked": typeof TrackedRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/about": typeof AboutRoute;
   "/discover": typeof DiscoverRoute;
   "/settings": typeof SettingsRoute;
+  "/tracked": typeof TrackedRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   "/about": typeof AboutRoute;
   "/discover": typeof DiscoverRoute;
   "/settings": typeof SettingsRoute;
+  "/tracked": typeof TrackedRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/about" | "/discover" | "/settings";
+  fullPaths: "/" | "/about" | "/discover" | "/settings" | "/tracked";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/about" | "/discover" | "/settings";
-  id: "__root__" | "/" | "/about" | "/discover" | "/settings";
+  to: "/" | "/about" | "/discover" | "/settings" | "/tracked";
+  id: "__root__" | "/" | "/about" | "/discover" | "/settings" | "/tracked";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute;
   DiscoverRoute: typeof DiscoverRoute;
   SettingsRoute: typeof SettingsRoute;
+  TrackedRoute: typeof TrackedRoute;
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/tracked": {
+      id: "/tracked";
+      path: "/tracked";
+      fullPath: "/tracked";
+      preLoaderRoute: typeof TrackedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     "/settings": {
       id: "/settings";
       path: "/settings";
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   DiscoverRoute: DiscoverRoute,
   SettingsRoute: SettingsRoute,
+  TrackedRoute: TrackedRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -4,6 +4,7 @@ import { basename, dirname } from "node:path";
 import { type ReactNode, useEffect, useState } from "react";
 import type { DiscoveryCandidate } from "../../domain/candidate";
 import type { UseDiscoveryPanel } from "../../controllers/discovery.controller";
+import { summarizeServiceError } from "../components/summarize-error";
 import { useTheme } from "../theme";
 import type { Tokens } from "../theme";
 
@@ -59,27 +60,7 @@ function groupByDir(
 }
 
 function summarizeError(err: NonNullable<UseDiscoveryPanel["error"]>): string {
-  switch (err.tag) {
-    case "NotFound":
-      return `${err.resource} not found: ${err.id}`;
-    case "Validation":
-      return `validation failed (${err.issues.length} issues)`;
-    case "Repository": {
-      const c = err.cause;
-      switch (c.tag) {
-        case "NotFound":
-          return `missing path: ${c.path}`;
-        case "ParseError":
-          return `parse error at ${c.path}`;
-        case "IoError":
-          return `I/O error at ${c.path}: ${
-            c.cause instanceof Error ? c.cause.message : String(c.cause)
-          }`;
-        case "Spawn":
-          return `command failed (exit ${c.exitCode}): ${c.command.join(" ")}`;
-      }
-    }
-  }
+  return summarizeServiceError(err);
 }
 
 export function DiscoveryPanel({ model }: DiscoveryPanelProps): ReactNode {

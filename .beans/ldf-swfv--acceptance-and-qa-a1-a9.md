@@ -3,9 +3,9 @@
 title: Acceptance and QA (A1-A9)
 status: todo
 type: epic
-priority: high
+priority: normal
 created_at: 2026-05-01T04:21:53Z
-updated_at: 2026-05-01T04:22:05Z
+updated_at: 2026-05-01T16:29:45Z
 parent: ldf-euyx
 blocked_by:
   - ldf-j9pe

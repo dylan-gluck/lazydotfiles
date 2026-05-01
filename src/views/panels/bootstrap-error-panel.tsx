@@ -8,6 +8,10 @@ function summarize(error: ServiceError): string[] {
       return [`${error.resource} not found: ${error.id}`];
     case "Validation":
       return error.issues.map((i) => `${(i.path ?? []).join(".") || "(root)"}: ${i.message}`);
+    case "InvalidTarget":
+      return [`invalid target (${error.reason}): ${error.path}`];
+    case "Rollback":
+      return [`rolled back at step "${error.failedStep}"`, ...summarize(error.original)];
     case "Repository": {
       const c = error.cause;
       switch (c.tag) {

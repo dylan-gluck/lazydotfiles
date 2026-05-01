@@ -1,6 +1,7 @@
 import { spawnConfigActor } from "../actors/config.actor";
 import { spawnDiscoveryActor } from "../actors/discovery.actor";
 import { spawnRepoActor } from "../actors/repo.actor";
+import { spawnTrackActor } from "../actors/track.actor";
 import { type ActorRuntime, createActorRuntime } from "../actors/runtime";
 import type { Services } from "./services";
 
@@ -9,5 +10,6 @@ export function wireActors(services: Services): ActorRuntime<Services> {
   spawnConfigActor(runtime);
   spawnRepoActor(runtime);
   spawnDiscoveryActor(runtime);
+  spawnTrackActor(runtime);
   return runtime;
 }

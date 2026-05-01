@@ -7,6 +7,7 @@ import type { ActorRuntime } from "./actors/runtime";
 import { ActorRuntimeContext } from "./actors/use-actor";
 import { wireActors } from "./composition/actors";
 import { wireServices } from "./composition/services";
+import { ServicesProvider } from "./composition/services-context";
 import { routeTree } from "./routeTree.gen";
 import { GlobalKeys } from "./views/components/global-keys";
 import { BootstrapErrorPanel } from "./views/panels/bootstrap-error-panel";
@@ -39,16 +40,18 @@ function App() {
   useEffect(() => () => actors.dispose(), []);
   return (
     <ThemeProvider mode="dark">
-      <ActorRuntimeContext.Provider value={actors as unknown as ActorRuntime<unknown>}>
-        {outcome.ok ? (
-          <>
-            <GlobalKeys />
-            <RouterProvider router={router} />
-          </>
-        ) : (
-          <BootstrapErrorPanel error={outcome.error} />
-        )}
-      </ActorRuntimeContext.Provider>
+      <ServicesProvider services={services}>
+        <ActorRuntimeContext.Provider value={actors as unknown as ActorRuntime<unknown>}>
+          {outcome.ok ? (
+            <>
+              <GlobalKeys />
+              <RouterProvider router={router} />
+            </>
+          ) : (
+            <BootstrapErrorPanel error={outcome.error} />
+          )}
+        </ActorRuntimeContext.Provider>
+      </ServicesProvider>
     </ThemeProvider>
   );
 }

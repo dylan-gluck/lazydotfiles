@@ -22,10 +22,11 @@ interface FakeState {
 function fakeJj(opts: FakeOpts, state: FakeState): JjRepository {
   return {
     kind: "JjRepository",
-    isRepo: async () => ok(true),
+    isRepo: async () => ok(false),
     initColocated: async () => ok(undefined),
     describe: async () => ok(undefined),
     snapshot: async () => ok(undefined),
+    newChange: async () => ok(undefined),
     log: async () => ok([]),
     gitFetch: async () => ok(undefined),
     gitPush: async () => ok(undefined),

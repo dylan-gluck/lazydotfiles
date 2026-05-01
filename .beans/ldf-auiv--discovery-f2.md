@@ -8,9 +8,9 @@ created_at: 2026-05-01T04:21:47Z
 updated_at: 2026-05-01T16:11:56Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
 ---
 
 Deliver PRD §F2 discovery: scan, sibling expansion, auto-track gating, and the `/discover` triage view.
@@ -58,8 +58,6 @@ Deliver PRD §F2 discovery: scan, sibling expansion, auto-track gating, and the 
 ## Blocks
 
 - Track / Untrack with backups (accept handler dispatches into add service).
-
-
 
 ## Summary of Changes
 

@@ -58,6 +58,16 @@ function makeServices(config: ConfigService): Services {
       expandSiblings: async () => ok([]),
       decide: (c) => c,
     },
+    backups: {
+      snapshot: async () => ok({} as never),
+      list: async () => ok([]),
+      read: async () => ok({} as never),
+      payloadPath: () => "",
+    },
+    track: {
+      add: async () => ok({} as never),
+      remove: async () => ok({} as never),
+    },
   };
 }
 
