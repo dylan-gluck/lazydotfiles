@@ -1,17 +1,17 @@
 ---
 # ldf-z560
 title: Operation log and restore (F5, F7)
-status: todo
+status: in-progress
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:47Z
-updated_at: 2026-05-01T04:22:05Z
+updated_at: 2026-05-01T17:04:29Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
-  - ldf-hia6
-  - ldf-zf8l
-  - ldf-vcv0
+    - ldf-j9pe
+    - ldf-hia6
+    - ldf-zf8l
+    - ldf-vcv0
 ---
 
 Deliver PRD §F5 operation log + §F7 restore from backup, with the `/log` view as a navigable timeline.
