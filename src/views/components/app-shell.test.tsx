@@ -12,7 +12,7 @@ afterEach(() => {
 
 async function render(node: React.ReactNode): Promise<string> {
   const result = await renderToFrame(<ThemeProvider mode="dark">{node}</ThemeProvider>, {
-    width: 100,
+    width: 120,
     height: 12,
   });
   testSetup = result.setup;
@@ -20,25 +20,27 @@ async function render(node: React.ReactNode): Promise<string> {
 }
 
 describe("AppShell", () => {
-  test("renders title, current path, and footer hint", async () => {
+  test("renders child content, current path, and global keybind footer", async () => {
     const frame = await render(
-      <AppShell title="lazydotfiles" currentPath="/tracked" hint="[q] quit">
+      <AppShell currentPath="/tracked">
         <text>body</text>
       </AppShell>,
     );
-    expect(frame).toContain("lazydotfiles");
-    expect(frame).toContain("/tracked");
-    expect(frame).toContain("[q] quit");
     expect(frame).toContain("body");
+    expect(frame).toContain("/tracked");
+    // Footer advertises every binding from the global keymap.
+    expect(frame).toContain("[1] status");
+    expect(frame).toContain("[7] sync");
+    expect(frame).toContain("[?] help");
+    expect(frame).toContain("[q] quit");
   });
 
-  test("falls back to default footer hint", async () => {
+  test("does not render a top header (no title bar)", async () => {
     const frame = await render(
-      <AppShell title="lazydotfiles" currentPath="/">
+      <AppShell currentPath="/">
         <text>x</text>
       </AppShell>,
     );
-    expect(frame).toContain("[?] help");
-    expect(frame).toContain("[q] quit");
+    expect(frame).not.toContain("lazydotfiles");
   });
 });

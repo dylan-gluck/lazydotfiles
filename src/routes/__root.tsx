@@ -1,6 +1,11 @@
 import { TextAttributes } from "@opentui/core";
-import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { globalKeymap } from "../controllers/keymap";
 import { AppShell } from "../views/components/app-shell";
+import { GlobalKeys } from "../views/components/global-keys";
+import { HelpOverlay } from "../views/components/help-overlay";
+import { useHelpOverlay } from "../views/components/help-overlay-context";
 import { useTheme } from "../views/theme";
 
 export const Route = createRootRoute({
@@ -22,15 +27,44 @@ function NotFound() {
   );
 }
 
+/**
+ * Bridges TanStack Router's history into the OpenTUI React reconciler.
+ *
+ * The router's internal `Transitioner` relies on `useSyncExternalStore`
+ * subscriptions to drive `router.load()` and to re-render `<Outlet />` after
+ * a navigation. In the OpenTUI React reconciler, those out-of-React store
+ * notifications do not reliably re-render — so navigation mutates history
+ * without ever swapping the rendered route.
+ *
+ * We bridge it manually:
+ *   1. subscribe to `router.history` (sync, fires inside `router.navigate`),
+ *   2. drive `router.load()` ourselves (what `Transitioner` would do),
+ *   3. bump local state so React schedules a real re-render,
+ *   4. key `<Outlet />` by pathname so it remounts and re-resolves matches.
+ */
 function RootLayout() {
-  const path = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+  const [, bumpTick] = useState(0);
+  const [path, setPath] = useState(router.state.location.pathname);
+  useEffect(() => {
+    return router.history.subscribe(() => {
+      router.load().finally(() => {
+        setPath(router.state.location.pathname);
+        bumpTick((t) => t + 1);
+      });
+    });
+  }, [router]);
+  const help = useHelpOverlay();
   return (
-    <AppShell
-      title="lazydotfiles"
-      currentPath={path}
-      hint="[1] status · [2] about · [3] config · [4] discover · [5] tracked · [6] log · [7] sync · [?] help · [q] quit"
-    >
-      <Outlet />
-    </AppShell>
+    <>
+      <GlobalKeys />
+      <AppShell currentPath={path}>
+        {help.open ? (
+          <HelpOverlay bindings={[...globalKeymap]} onClose={help.close} />
+        ) : (
+          <Outlet key={path} />
+        )}
+      </AppShell>
+    </>
   );
 }

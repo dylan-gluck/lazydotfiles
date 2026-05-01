@@ -109,7 +109,6 @@ export function StatusPanel({ model }: StatusPanelProps): ReactNode {
             {model.toast.message}
           </text>
         )}
-        <text fg={t.fg.dim}>[?] help · [q] quit</text>
       </box>
     </box>
   );

@@ -36,7 +36,7 @@ export const dark: Tokens = {
     success: "#9ece6a",
   },
   bg: {
-    default: "#1a1b26",
+    default: "transparent",
     surface: "#1f2335",
     elevated: "#24283b",
   },

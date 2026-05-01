@@ -8,15 +8,15 @@ created_at: 2026-05-01T04:21:53Z
 updated_at: 2026-05-01T18:51:40Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
-    - ldf-auiv
-    - ldf-vcv0
-    - ldf-z560
-    - ldf-egel
-    - ldf-zfcv
-    - ldf-kkzc
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
+  - ldf-auiv
+  - ldf-vcv0
+  - ldf-z560
+  - ldf-egel
+  - ldf-zfcv
+  - ldf-kkzc
 ---
 
 Cross-cutting acceptance verification. Walks PRD §9 A1–A9 end-to-end on a clean account, captures a script that future regressions can run, and resolves every PRD §10 open question with a documented default before declaring MVP done.
@@ -63,13 +63,12 @@ Cross-cutting acceptance verification. Walks PRD §9 A1–A9 end-to-end on a cle
 
 - Every prior epic.
 
-
-
 ## Summary of Changes
 
 QA build phase shipped on 2026-05-01.
 
 **Acceptance evidence (A1–A9):**
+
 - A1 → `tests/e2e/a1-boot-speed.test.ts` (new)
 - A2 → `tests/discovery.a2.test.ts`
 - A3 → `tests/e2e/a3-add-round-trip.test.ts` (new)

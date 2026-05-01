@@ -9,10 +9,7 @@ import { wireActors } from "./composition/actors";
 import { wireServices } from "./composition/services";
 import { ServicesProvider } from "./composition/services-context";
 import { routeTree } from "./routeTree.gen";
-import { GlobalKeys } from "./views/components/global-keys";
-import { HelpOverlay } from "./views/components/help-overlay";
-import { HelpOverlayProvider, useHelpOverlay } from "./views/components/help-overlay-context";
-import { globalKeymap } from "./controllers/keymap";
+import { HelpOverlayProvider } from "./views/components/help-overlay-context";
 import { BootstrapErrorPanel } from "./views/panels/bootstrap-error-panel";
 import { ThemeProvider } from "./views/theme";
 
@@ -47,7 +44,7 @@ function App() {
         <ActorRuntimeContext.Provider value={actors as unknown as ActorRuntime<unknown>}>
           {outcome.ok ? (
             <HelpOverlayProvider>
-              <Shell />
+              <RouterProvider router={router} />
             </HelpOverlayProvider>
           ) : (
             <BootstrapErrorPanel error={outcome.error} />
@@ -55,20 +52,6 @@ function App() {
         </ActorRuntimeContext.Provider>
       </ServicesProvider>
     </ThemeProvider>
-  );
-}
-
-function Shell() {
-  const help = useHelpOverlay();
-  return (
-    <>
-      <GlobalKeys />
-      {help.open ? (
-        <HelpOverlay bindings={[...globalKeymap]} onClose={help.close} />
-      ) : (
-        <RouterProvider router={router} />
-      )}
-    </>
   );
 }
 

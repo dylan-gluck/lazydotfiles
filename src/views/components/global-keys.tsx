@@ -5,6 +5,10 @@ import { useMemo } from "react";
 import { dispatchKeymap, globalKeymap, type KeymapContext } from "../../controllers/keymap";
 import { useHelpOverlay } from "./help-overlay-context";
 
+/**
+ * Mounts the global keymap. MUST be rendered inside `<RouterProvider>` so
+ * `useRouter()` resolves to the live router instance.
+ */
 export function GlobalKeys(): null {
   const router = useRouter();
   const renderer = useRenderer();
