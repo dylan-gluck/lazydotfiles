@@ -14,6 +14,8 @@ import { type DiscoveryService, createDiscoveryService } from "../services/disco
 import { createRepoService, type RepoService } from "../services/repo.service";
 import { createOperationService, type OperationService } from "../services/operation.service";
 import { createRestoreService, type RestoreService } from "../services/restore.service";
+import { createEditorRunner } from "../services/sync.editor";
+import { createSyncService, type SyncService } from "../services/sync.service";
 import { createTrackService, type TrackService } from "../services/track.service";
 
 export interface Services {
@@ -26,6 +28,7 @@ export interface Services {
   readonly track: TrackService;
   readonly operation: OperationService;
   readonly restore: RestoreService;
+  readonly sync: SyncService;
 }
 
 export function wireServices(deps: { home: string }): Services {
@@ -60,6 +63,11 @@ export function wireServices(deps: { home: string }): Services {
     backups,
   });
   const operation = createOperationService({ jj, root: dotfilesRoot });
+  const sync = createSyncService({
+    jj,
+    root: dotfilesRoot,
+    editor: createEditorRunner(),
+  });
   const restore = createRestoreService({
     home: deps.home,
     dotfilesRoot,
@@ -79,5 +87,6 @@ export function wireServices(deps: { home: string }): Services {
     track,
     operation,
     restore,
+    sync,
   };
 }

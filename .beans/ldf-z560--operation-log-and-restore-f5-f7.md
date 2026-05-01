@@ -8,10 +8,10 @@ created_at: 2026-05-01T04:21:47Z
 updated_at: 2026-05-01T17:23:41Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
-    - ldf-vcv0
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
+  - ldf-vcv0
 ---
 
 Deliver PRD §F5 operation log + §F7 restore from backup, with the `/log` view as a navigable timeline.
@@ -54,8 +54,8 @@ Deliver PRD §F5 operation log + §F7 restore from backup, with the `/log` view 
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter, Track / Untrack.
 
-
 ## Summary of Changes
+
 - Specs: 6 files at `docs/specs/operation-log-and-restore-f5-f7_*.md`.
 - Domain: `OperationView` schema.
 - Repository: `JjRepository.{logAtOp,diffSummaryAtOp,diffAtOp}` plus `parseDiffSummary`.

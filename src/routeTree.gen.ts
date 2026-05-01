@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as TrackedRouteImport } from "./routes/tracked";
+import { Route as SyncRouteImport } from "./routes/sync";
 import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as LogRouteImport } from "./routes/log";
 import { Route as DiscoverRouteImport } from "./routes/discover";
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from "./routes/index";
 const TrackedRoute = TrackedRouteImport.update({
   id: "/tracked",
   path: "/tracked",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const SyncRoute = SyncRouteImport.update({
+  id: "/sync",
+  path: "/sync",
   getParentRoute: () => rootRouteImport,
 } as any);
 const SettingsRoute = SettingsRouteImport.update({
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
   "/settings": typeof SettingsRoute;
+  "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
   "/settings": typeof SettingsRoute;
+  "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
 export interface FileRoutesById {
@@ -70,14 +78,15 @@ export interface FileRoutesById {
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
   "/settings": typeof SettingsRoute;
+  "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/about" | "/discover" | "/log" | "/settings" | "/tracked";
+  fullPaths: "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/about" | "/discover" | "/log" | "/settings" | "/tracked";
-  id: "__root__" | "/" | "/about" | "/discover" | "/log" | "/settings" | "/tracked";
+  to: "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
+  id: "__root__" | "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -86,6 +95,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute;
   LogRoute: typeof LogRoute;
   SettingsRoute: typeof SettingsRoute;
+  SyncRoute: typeof SyncRoute;
   TrackedRoute: typeof TrackedRoute;
 }
 
@@ -96,6 +106,13 @@ declare module "@tanstack/react-router" {
       path: "/tracked";
       fullPath: "/tracked";
       preLoaderRoute: typeof TrackedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/sync": {
+      id: "/sync";
+      path: "/sync";
+      fullPath: "/sync";
+      preLoaderRoute: typeof SyncRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/settings": {
@@ -142,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   LogRoute: LogRoute,
   SettingsRoute: SettingsRoute,
+  SyncRoute: SyncRoute,
   TrackedRoute: TrackedRoute,
 };
 export const routeTree = rootRouteImport

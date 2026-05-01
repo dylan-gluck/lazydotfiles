@@ -5,6 +5,7 @@ import type { UseTrackedPanel } from "../../controllers/track.controller";
 import type { TrackedFile } from "../../domain/tracked-file";
 import { ConfirmModal } from "../components/confirm-modal";
 import { summarizeServiceError } from "../components/summarize-error";
+import { relativeAge } from "../lib/relative-age";
 import { useTheme } from "../theme";
 
 export interface TrackedPanelProps {
@@ -12,19 +13,6 @@ export interface TrackedPanelProps {
 }
 
 const FOOTER_HINT = "[j/k] move · [u] untrack · [b] toggle backups · [4] discover";
-
-function relativeAge(iso: string, now: Date = new Date()): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return iso;
-  const diffMs = now.getTime() - then;
-  if (diffMs < 60_000) return "just now";
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export function TrackedPanel({ model }: TrackedPanelProps): ReactNode {
   const t = useTheme();

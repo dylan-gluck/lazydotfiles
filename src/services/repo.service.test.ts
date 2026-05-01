@@ -30,6 +30,8 @@ function fakeJj(opts: FakeOpts, state: FakeState): JjRepository {
     log: async () => ok([]),
     gitFetch: async () => ok(undefined),
     gitPush: async () => ok(undefined),
+    aheadBehind: async () => ok({ ahead: 0, behind: 0 }),
+    listConflicts: async () => ok([]),
     opLog: async ({ limit }): Promise<Result<readonly Operation[], RepoError>> => {
       if (opts.failOpLog) return err(opts.failOpLog);
       const all = opts.ops ?? [];
@@ -39,7 +41,14 @@ function fakeJj(opts: FakeOpts, state: FakeState): JjRepository {
     status: async (): Promise<Result<SyncState, RepoError>> => {
       if (opts.failStatus) return err(opts.failStatus);
       return ok(
-        opts.status ?? { lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null },
+        opts.status ?? {
+          lastSyncAt: null,
+          ahead: 0,
+          behind: 0,
+          dirty: false,
+          remote: null,
+          conflicts: [],
+        },
       );
     },
     opRestore: async ({ opId }) => {
@@ -127,7 +136,16 @@ describe("repoService", () => {
     const state = { restored: [] };
     const svc = createRepoService({
       jj: fakeJj(
-        { status: { lastSyncAt: null, ahead: 0, behind: 0, dirty: true, remote: null } },
+        {
+          status: {
+            lastSyncAt: null,
+            ahead: 0,
+            behind: 0,
+            dirty: true,
+            remote: null,
+            conflicts: [],
+          },
+        },
         state,
       ),
       tracked: fakeTracked({}),

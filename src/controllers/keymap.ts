@@ -58,6 +58,13 @@ export const globalKeymap: readonly Binding[] = [
     },
   },
   {
+    keys: ["7"],
+    description: "Sync",
+    run: ({ router }) => {
+      void router.navigate({ to: "/sync" });
+    },
+  },
+  {
     keys: ["?"],
     description: "Help",
     run: ({ ui }) => ui.toggleHelp(),

@@ -6,6 +6,8 @@ import {
   parseOperationKind,
   RepoSchema,
   SyncStateSchema,
+  ConflictKindSchema,
+  ConflictDescriptorSchema,
 } from "./repo";
 
 describe("OperationKindSchema", () => {
@@ -63,8 +65,53 @@ describe("SyncStateSchema", () => {
       behind: 0,
       dirty: false,
       remote: null,
+      conflicts: [],
     });
     expect(r.issues).toBeUndefined();
+  });
+
+  test("accepts populated conflicts", () => {
+    const r = SyncStateSchema["~standard"].validate({
+      lastSyncAt: "2026-05-01T00:00:00Z",
+      ahead: 1,
+      behind: 2,
+      dirty: true,
+      remote: "git@host:repo.git",
+      conflicts: [{ path: ".zshrc", kind: "ours" }],
+    });
+    expect(r.issues).toBeUndefined();
+  });
+
+  test("rejects when conflicts entries miss kind", () => {
+    const r = SyncStateSchema["~standard"].validate({
+      lastSyncAt: null,
+      ahead: 0,
+      behind: 0,
+      dirty: false,
+      remote: null,
+      conflicts: [{ path: ".zshrc" }],
+    });
+    expect(r.issues).toBeDefined();
+  });
+});
+
+describe("ConflictKindSchema", () => {
+  test("accepts ours / theirs / edit-pending", () => {
+    for (const k of ["ours", "theirs", "edit-pending"] as const) {
+      expect(ConflictKindSchema["~standard"].validate(k).issues).toBeUndefined();
+    }
+  });
+  test("rejects 'resolved'", () => {
+    expect(ConflictKindSchema["~standard"].validate("resolved").issues).toBeDefined();
+  });
+});
+
+describe("ConflictDescriptorSchema", () => {
+  test("requires path and kind", () => {
+    expect(
+      ConflictDescriptorSchema["~standard"].validate({ path: ".zshrc", kind: "theirs" }).issues,
+    ).toBeUndefined();
+    expect(ConflictDescriptorSchema["~standard"].validate({ path: ".zshrc" }).issues).toBeDefined();
   });
 });
 

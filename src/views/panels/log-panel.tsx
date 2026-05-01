@@ -5,6 +5,7 @@ import type { UseLogPanel } from "../../controllers/log.controller";
 import type { OperationKind, OperationView } from "../../domain/repo";
 import { ConfirmModal } from "../components/confirm-modal";
 import { summarizeServiceError } from "../components/summarize-error";
+import { relativeAge } from "../lib/relative-age";
 import { useTheme } from "../theme";
 
 export interface LogPanelProps {
@@ -27,18 +28,6 @@ function kindIcon(k: OperationKind): string {
     case "edit":
       return "·";
   }
-}
-
-function relativeAge(iso: string, now: Date = new Date()): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return iso;
-  const diffMs = now.getTime() - then;
-  if (diffMs < 60_000) return "just now";
-  const m = Math.floor(diffMs / 60_000);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }
 
 function shortId(id: string): string {

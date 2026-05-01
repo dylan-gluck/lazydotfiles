@@ -108,7 +108,7 @@ describe("repoActor (effect)", () => {
       head: async () => ok(ops[0]!),
       operations: async () => ok(ops),
       syncState: async () =>
-        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: true, remote: null }),
+        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: true, remote: null, conflicts: [] }),
       dirty: async () => ok(true),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
@@ -156,7 +156,7 @@ describe("repoActor (effect)", () => {
       head: async () => ok(op(0)),
       operations: async () => ok([]),
       syncState: async () =>
-        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null }),
+        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
       dirty: async () => ok(false),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),

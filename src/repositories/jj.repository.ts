@@ -36,6 +36,12 @@ export interface JjRepository {
   status(opts: { root: string }): Promise<Result<SyncState, RepoError>>;
   gitFetch(opts: { root: string }): Promise<Result<void, RepoError>>;
   gitPush(opts: { root: string }): Promise<Result<void, RepoError>>;
+  /** Counts of changes ahead/behind of the tracked remote bookmarks. */
+  aheadBehind(opts: {
+    root: string;
+  }): Promise<Result<{ ahead: number; behind: number }, RepoError>>;
+  /** Conflicted paths (dotfiles-repo-relative) per `jj resolve --list`. */
+  listConflicts(opts: { root: string }): Promise<Result<readonly string[], RepoError>>;
 }
 
 const US = "\u001f"; // ASCII unit separator — never appears in legitimate jj output we parse.
@@ -182,7 +188,37 @@ function parseStatus(text: string, remote: string | null): SyncState {
     behind: 0,
     dirty,
     remote,
+    conflicts: [],
   };
+}
+
+/**
+ * Count non-empty lines emitted by a `jj log -T '"x\n"'` invocation.
+ * Exported for unit testing.
+ */
+export function countLines(stdout: string): number {
+  let n = 0;
+  for (const raw of stdout.split("\n")) {
+    if (raw.length > 0) n++;
+  }
+  return n;
+}
+
+/**
+ * Parse `jj resolve --list` output. Each non-empty line is
+ * `<conflict-summary> <path>` where the summary may contain spaces
+ * (e.g. "2-sided conflict including 1 deletion"). The path is the
+ * trailing whitespace-separated token. Exported for unit testing.
+ */
+export function parseConflictList(stdout: string): readonly string[] {
+  const out: string[] = [];
+  for (const raw of stdout.split("\n")) {
+    const line = raw.trimEnd();
+    if (line.length === 0) continue;
+    const space = line.lastIndexOf(" ");
+    out.push(space === -1 ? line : line.slice(space + 1));
+  }
+  return out;
 }
 
 export function createJjRepository(): JjRepository {
@@ -297,6 +333,54 @@ export function createJjRepository(): JjRepository {
     async gitPush({ root }) {
       const r = await runJj(["git", "push"], { cwd: root });
       return r.ok ? ok(undefined) : err(r.error);
+    },
+
+    async aheadBehind({ root }) {
+      const ahead = await runJj(
+        ["log", "--no-graph", "-r", "remote_bookmarks()..@", "-T", `"x\n"`],
+        { cwd: root },
+      );
+      if (!ahead.ok) {
+        // No remote bookmarks yet \u2192 jj exits 0 with empty stdout, but on some versions
+        // it errors; treat that as zero counts rather than a hard failure.
+        if (
+          ahead.error.tag === "Spawn" &&
+          /(no such revset|unknown revision)/i.test(ahead.error.stderr)
+        ) {
+          return ok({ ahead: 0, behind: 0 });
+        }
+        return err(ahead.error);
+      }
+      const behind = await runJj(
+        ["log", "--no-graph", "-r", "@..remote_bookmarks()", "-T", `"x\n"`],
+        { cwd: root },
+      );
+      if (!behind.ok) {
+        if (
+          behind.error.tag === "Spawn" &&
+          /(no such revset|unknown revision)/i.test(behind.error.stderr)
+        ) {
+          return ok({ ahead: countLines(ahead.value.stdout), behind: 0 });
+        }
+        return err(behind.error);
+      }
+      return ok({
+        ahead: countLines(ahead.value.stdout),
+        behind: countLines(behind.value.stdout),
+      });
+    },
+
+    async listConflicts({ root }) {
+      const r = await runJj(["resolve", "--list"], { cwd: root });
+      if (r.ok) return ok(parseConflictList(r.value.stdout));
+      // jj exits non-zero when there are no conflicts. Treat as empty.
+      if (
+        r.error.tag === "Spawn" &&
+        /no conflicts? (to resolve|in revision|found)/i.test(r.error.stderr)
+      ) {
+        return ok([]);
+      }
+      return err(r.error);
     },
 
     async status({ root }) {

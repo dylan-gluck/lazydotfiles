@@ -62,12 +62,33 @@ export const OperationViewSchema = object({
 });
 export type OperationView = Infer<typeof OperationViewSchema>;
 
+export const ConflictKindSchema: Schema<"ours" | "theirs" | "edit-pending"> = union([
+  literal("ours"),
+  literal("theirs"),
+  literal("edit-pending"),
+]);
+export type ConflictKind = Infer<typeof ConflictKindSchema>;
+
+/**
+ * UI-facing per-file conflict descriptor. `path` is dotfiles-repo-relative
+ * (matches `jj diff --summary`). `kind` is the **pending UI choice** — not jj's
+ * intrinsic state — defaulted by the service to `"ours"` and flipped to
+ * `"edit-pending"` while $EDITOR is open. Cleared on the next state read that
+ * finds the path no longer conflicted.
+ */
+export const ConflictDescriptorSchema = object({
+  path: string(),
+  kind: ConflictKindSchema,
+});
+export type ConflictDescriptor = Infer<typeof ConflictDescriptorSchema>;
+
 export const SyncStateSchema = object({
   lastSyncAt: nullableString(),
   ahead: number(),
   behind: number(),
   dirty: boolean(),
   remote: nullableString(),
+  conflicts: array(ConflictDescriptorSchema),
 });
 export type SyncState = Infer<typeof SyncStateSchema>;
 

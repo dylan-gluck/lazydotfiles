@@ -48,7 +48,7 @@ function makeServices(config: ConfigService): Services {
       head: async () => ok({} as never),
       operations: async () => ok([]),
       syncState: async () =>
-        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null }),
+        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
       dirty: async () => ok(false),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
@@ -75,6 +75,13 @@ function makeServices(config: ConfigService): Services {
     restore: {
       restoreToOp: async () => ok({ rematerialized: [] }),
       restoreFromBackup: async () => ok({} as never),
+    },
+    sync: {
+      state: async () => ok({} as never),
+      fetch: async () => ok({} as never),
+      push: async () => ok({} as never),
+      sync: async () => ok({} as never),
+      resolve: async () => ok({} as never),
     },
   };
 }

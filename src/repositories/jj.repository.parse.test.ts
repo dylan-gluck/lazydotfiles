@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseOperationLine } from "./jj.repository";
+import { countLines, parseConflictList, parseOperationLine } from "./jj.repository";
 
 const US = "\u001f";
 
@@ -42,5 +42,31 @@ describe("parseOperationLine", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.value.kind).toBe("edit");
+  });
+});
+
+describe("countLines", () => {
+  test("counts non-empty newline-terminated lines", () => {
+    expect(countLines("")).toBe(0);
+    expect(countLines("x\n")).toBe(1);
+    expect(countLines("x\nx\nx\n")).toBe(3);
+    expect(countLines("x\n\nx\n")).toBe(2);
+  });
+});
+
+describe("parseConflictList", () => {
+  test("extracts trailing path from each row", () => {
+    const stdout = [
+      "2-sided conflict including 1 deletion .zshrc",
+      "2-sided conflict src/foo.ts",
+      "",
+    ].join("\n");
+    expect(parseConflictList(stdout)).toEqual([".zshrc", "src/foo.ts"]);
+  });
+  test("single-token line is taken as a path", () => {
+    expect(parseConflictList(".zshrc\n")).toEqual([".zshrc"]);
+  });
+  test("empty input yields empty list", () => {
+    expect(parseConflictList("")).toEqual([]);
   });
 });

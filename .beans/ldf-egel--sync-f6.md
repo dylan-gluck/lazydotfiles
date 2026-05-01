@@ -1,16 +1,16 @@
 ---
 # ldf-egel
 title: Sync (F6)
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:47Z
-updated_at: 2026-05-01T04:22:04Z
+updated_at: 2026-05-01T17:54:15Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
-  - ldf-hia6
-  - ldf-zf8l
+    - ldf-j9pe
+    - ldf-hia6
+    - ldf-zf8l
 ---
 
 Deliver PRD §F6 sync: `jj git fetch` + `jj git push`, conflict surface, and in-TUI scheduled auto-sync.
@@ -53,3 +53,17 @@ Deliver PRD §F6 sync: `jj git fetch` + `jj git push`, conflict surface, and in-
 ## Blocked-by
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter.
+
+
+## Summary of Changes
+
+- Domain: `SyncState` extended with typed `ConflictDescriptor[]`; `ConflictKind = ours|theirs|edit-pending`.
+- Repo: `JjRepository.aheadBehind`, `listConflicts`; `status` populates `conflicts: []`.
+- Service: `SyncService` with `state/fetch/push/sync/resolve`; `EditorRunner` (true via Bun.spawn, suspend hook); conflict-marker stripping (2-way + 3-way).
+- Scheduler: TUI-scoped `SyncScheduler` (start/stop, idempotent, injectable timer).
+- Actor: `spawnSyncActor` with state machine (idle/fetching/pushing/syncing/resolving/refreshing/error), cross-actor wiring on `configChanged` to start/stop schedule.
+- View: `SyncPanel` + `useSyncPanel` + `/sync` route, keymap `7`, root hint extended.
+- Helper: `views/lib/relative-age.ts` extracted from log/tracked panels (DRY \u00a71.3).
+- Tests: 49 new tests, A6 integration round-trip (bare git remote + jj clone + fetch+push+behind), 323/323 green, oxlint+oxfmt clean.
+
+PRD acceptance: A6 (`ldf sync` against configured remote performs fetch+push and reports ahead/behind correctly; conflicts list affected paths) verified by integration test.
