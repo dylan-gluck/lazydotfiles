@@ -1,4 +1,4 @@
-# Constitution — `lazy-dotfiles`
+# Constitution — `lazydotfiles`
 
 | Revision | Date       | Author |
 | -------- | ---------- | ------ |
