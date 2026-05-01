@@ -101,6 +101,7 @@ Execute each task against its spec, parallelizing where the dependency graph all
 
 - You **MUST** mark each task `in-progress` via `beans update --json <task-id> -s in-progress` immediately before starting it, and `completed` immediately after its acceptance criteria hold.
 - You **MUST** order task execution by dependency: a task whose spec references another task's public surface **MUST** start after that task is `completed`.
+- Within an epic, default ordering follows the architectural layering from ADR-001: `domain → repository → service → actor → controller → view`, then tests that span layers. Task-level `--blocked-by` edges are usually epic-level only, so this layered order is what You **MUST** use to sequence intra-epic work absent an explicit edge.
 - You **MUST** parallelize tasks with disjoint file sets via the `task` tool. Independent tasks **MUST NOT** be sequenced; sequential execution of independent work is **PROHIBITED** because it wastes the user's wall time.
 - Each delegated subagent **MUST** receive the spec file path, the task body, and explicit pointers to the constitution / ADR sections it must respect, because subagents have no access to this conversation.
 - You **MUST** write tests red-before-green for every domain service, reducer, repository, and panel touched, per CONSTITUTION §3.1; merging a service untested at the unit level is **PROHIBITED**.
@@ -181,7 +182,7 @@ The agent processes only the three named tasks (BackupRecord schema, backup repo
 
 **Expected behavior:**
 
-Step 1 detects that `ldf-hia6` (Config & Bootstrap) is not yet `completed`. The agent stops with a message: "ldf-zf8l is blocked by ldf-hia6 (status=in-progress). Run the build-phase SOP on ldf-hia6 first." No bean state changes; no specs are written.
+Step 1 detects that `ldf-hia6` (Config & Bootstrap) is not yet `completed`. The agent stops with a message: "ldf-zf8l is blocked by ldf-hia6 (status != completed). Run the build-phase SOP on ldf-hia6 first." No bean state changes; no specs are written.
 
 ## Troubleshooting
 

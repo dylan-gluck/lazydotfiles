@@ -5,13 +5,12 @@ status: todo
 type: epic
 priority: high
 created_at: 2026-05-01T04:21:47Z
-updated_at: 2026-05-01T04:22:05Z
+updated_at: 2026-05-01T15:10:19Z
 parent: ldf-euyx
 blocked_by:
     - ldf-j9pe
     - ldf-hia6
     - ldf-zf8l
-    - ldf-auiv
 ---
 
 Deliver atomic add/remove with snapshot-protected rollback (PRD §F3, §F4, §F7).
