@@ -8,9 +8,9 @@ created_at: 2026-05-01T04:21:47Z
 updated_at: 2026-05-01T17:54:15Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
 ---
 
 Deliver PRD §F6 sync: `jj git fetch` + `jj git push`, conflict surface, and in-TUI scheduled auto-sync.
@@ -53,7 +53,6 @@ Deliver PRD §F6 sync: `jj git fetch` + `jj git push`, conflict surface, and in-
 ## Blocked-by
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter.
-
 
 ## Summary of Changes
 

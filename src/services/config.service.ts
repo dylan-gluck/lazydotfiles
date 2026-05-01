@@ -3,7 +3,7 @@ import { err, ok, type Result } from "../lib/result";
 import type { ConfigRepository } from "../repositories/types";
 import type { ServiceError } from "./types";
 
-const KNOWN_OPTIONS = new Set([
+export const KNOWN_OPTIONS: ReadonlySet<string> = new Set([
   "path.home",
   "path.dotfiles",
   "path.backup",
