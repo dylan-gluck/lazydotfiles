@@ -53,6 +53,11 @@ function makeServices(config: ConfigService): Services {
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
     },
+    discovery: {
+      scan: async () => ok({ queued: [], autoTracked: [] }),
+      expandSiblings: async () => ok([]),
+      decide: (c) => c,
+    },
   };
 }
 

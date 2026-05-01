@@ -28,7 +28,7 @@ function RootLayout() {
     <AppShell
       title="lazydotfiles"
       currentPath={path}
-      hint="[1] status · [2] about · [3] settings · [?] help · [q] quit"
+      hint="[1] status · [2] about · [3] settings · [4] discover · [?] help · [q] quit"
     >
       <Outlet />
     </AppShell>

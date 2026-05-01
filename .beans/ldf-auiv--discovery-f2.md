@@ -1,16 +1,16 @@
 ---
 # ldf-auiv
 title: Discovery (F2)
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:47Z
-updated_at: 2026-05-01T04:22:04Z
+updated_at: 2026-05-01T16:11:56Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
-  - ldf-hia6
-  - ldf-zf8l
+    - ldf-j9pe
+    - ldf-hia6
+    - ldf-zf8l
 ---
 
 Deliver PRD §F2 discovery: scan, sibling expansion, auto-track gating, and the `/discover` triage view.
@@ -58,3 +58,24 @@ Deliver PRD §F2 discovery: scan, sibling expansion, auto-track gating, and the 
 ## Blocks
 
 - Track / Untrack with backups (accept handler dispatches into add service).
+
+
+
+## Summary of Changes
+
+Discovery (F2) shipped end-to-end:
+
+- Specs: `docs/specs/discovery-f2_*.md` (8 files).
+- Domain: `src/domain/candidate.ts` (`DiscoveryCandidate`, `Reason`, `CandidateStatus`, `makeCandidate`).
+- Repository: `src/repositories/fs-scanner.repository.ts` (gitignore-semantic scan, sibling walk, `classifyPath`, `isGlobPattern`).
+- Service: `src/services/discovery.service.ts` (`scan`, `expandSiblings`, `decide`; auto-track callback seam for the future track phase).
+- Actor: `src/actors/discovery.actor.ts` (rescan/expand/accept/reject/defer; pure reducer + service-driven effects).
+- Controller: `src/controllers/discovery.controller.ts` (`useDiscoveryPanel` hook).
+- View: `src/views/panels/discovery-panel.tsx` (sidebar grouped by parent dir, detail pane, footer counts, empty/scanning/error states; flexbox-only).
+- Route: `src/routes/discover.tsx` (`/discover`); keymap binds `[4]`.
+- Tests: candidate schema, classify rules, scanner integration, service unit, actor reducer + effect, panel snapshot, A2 end-to-end against a real tmp HOME (`tests/discovery.a2.test.ts`).
+- Wiring: `src/composition/services.ts` adds `discovery`; `src/composition/actors.ts` spawns `discovery` actor.
+
+PRD acceptance: A2 verified by `tests/discovery.a2.test.ts` (zshrc auto-tracks, fish config queued, sibling expansion surfaces other entries). Re-scan keybinding is effect-driven via the actor runtime.
+
+169 tests pass; `tsc --noEmit` clean; `oxlint` and `oxfmt` clean.

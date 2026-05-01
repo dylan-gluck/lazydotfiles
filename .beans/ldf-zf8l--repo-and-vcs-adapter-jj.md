@@ -8,8 +8,8 @@ created_at: 2026-05-01T04:21:47Z
 updated_at: 2026-05-01T15:58:04Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
+  - ldf-j9pe
+  - ldf-hia6
 ---
 
 Adapter layer over `jj` so every higher feature reads/writes the dotfiles repo through a single typed surface.
@@ -49,8 +49,6 @@ Adapter layer over `jj` so every higher feature reads/writes the dotfiles repo t
 ## Blocked-by
 
 - Foundation, Config & Bootstrap (needs `paths.dotfiles`).
-
-
 
 ## Summary of Changes
 
