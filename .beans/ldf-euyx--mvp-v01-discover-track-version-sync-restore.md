@@ -1,11 +1,11 @@
 ---
 # ldf-euyx
 title: MVP v0.1 - discover, track, version, sync, restore
-status: todo
+status: in-progress
 type: milestone
 priority: high
 created_at: 2026-05-01T04:18:27Z
-updated_at: 2026-05-01T04:18:27Z
+updated_at: 2026-05-01T15:31:34Z
 ---
 
 End-to-end MVP shipping the round-trip described in PRD-001: discover → track → version → sync → restore, with no data loss and no partial states.

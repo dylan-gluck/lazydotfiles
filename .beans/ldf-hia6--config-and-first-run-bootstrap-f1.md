@@ -1,14 +1,14 @@
 ---
 # ldf-hia6
 title: Config and first-run bootstrap (F1)
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-05-01T04:21:41Z
-updated_at: 2026-05-01T04:22:04Z
+updated_at: 2026-05-01T15:44:29Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
+    - ldf-j9pe
 ---
 
 Deliver PRD §F1 first-run bootstrap and the `Config` aggregate that every other feature reads.
@@ -54,3 +54,17 @@ Deliver PRD §F1 first-run bootstrap and the `Config` aggregate that every other
 ## Blocked-by
 
 - Foundation epic.
+
+
+
+## Summary of Changes
+
+- Specs: docs/specs/config-and-first-run-bootstrap-f1_*.md (7 files).
+- Domain: src/domain/config.ts.
+- Lib: src/lib/path.ts.
+- Repositories: src/repositories/{types.ts,config.repository.ts,fs.repository.ts,vcs.repository.ts}.
+- Services: src/services/{types.ts,config.service.ts,bootstrap.service.ts}.
+- Actor: src/actors/config.actor.ts.
+- Composition + entry: src/composition/{services.ts,actors.ts}, src/index.tsx, src/views/panels/bootstrap-error-panel.tsx.
+- Tests: tests/{domain,lib,repositories,services,actors,composition}/*.test.ts (16 files, 90 pass).
+- Verified A1 end-to-end against tmp HOME: config.toml + colocated jj git init + .dotfiles.bak created on first run; second run is a no-op.

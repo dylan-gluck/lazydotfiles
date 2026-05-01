@@ -38,8 +38,6 @@ Lay the layered skeleton from ADR-001 and the TUI runtime from ADR-002 so every 
 
 Substrate for **all** features. No PRD requirement closes here, but every later epic is **blocked-by** this one.
 
-
-
 ## Summary of Changes
 
 Foundation skeleton + actor runtime + theme landed.
@@ -47,6 +45,7 @@ Foundation skeleton + actor runtime + theme landed.
 Specs at `docs/specs/foundation-skeleton-runtime-theme_*.md` (11 files).
 
 Code:
+
 - `src/lib/result.ts` — Result<T,E> + ok/err/map/flatMap/mapErr/match.
 - `src/domain/schema.ts` — minimal StandardSchemaV1 validator (string/number/boolean/literal/union/object/array/optional).
 - `src/domain/errors.ts` — DomainError tagged union.
