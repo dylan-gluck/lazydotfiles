@@ -44,6 +44,15 @@ function makeServices(config: ConfigService): Services {
         return ok({ config: defaultConfig(), initialized: false });
       },
     },
+    repo: {
+      head: async () => ok({} as never),
+      operations: async () => ok([]),
+      syncState: async () =>
+        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null }),
+      dirty: async () => ok(false),
+      restoreOp: async () => ok(undefined),
+      trackedFiles: async () => ok([]),
+    },
   };
 }
 

@@ -5,7 +5,7 @@ import { defaultConfig } from "../../src/domain/config";
 import { expandPaths } from "../../src/lib/path";
 import { createConfigRepository } from "../../src/repositories/config.repository";
 import { createFsRepository } from "../../src/repositories/fs.repository";
-import { createJjRepository } from "../../src/repositories/vcs.repository";
+import { createJjRepository } from "../../src/repositories/jj.repository";
 import { createBootstrapService } from "../../src/services/bootstrap.service";
 import { createConfigService } from "../../src/services/config.service";
 import { withTmpDir } from "../../src/test-utils/tmp";

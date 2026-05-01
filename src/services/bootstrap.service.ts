@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "../lib/result";
 import type { Config } from "../domain/config";
 import type { FsRepository } from "../repositories/fs.repository";
-import type { JjRepository } from "../repositories/vcs.repository";
+import type { JjRepository } from "../repositories/jj.repository";
 import type { ConfigService } from "./config.service";
 import type { ServiceError } from "./types";
 

@@ -22,6 +22,11 @@ function summarize(error: ServiceError): string[] {
           const cause = c.cause instanceof Error ? c.cause.message : String(c.cause);
           return [`I/O error at ${c.path}: ${cause}`];
         }
+        case "Spawn":
+          return [
+            `command failed (exit ${c.exitCode}): ${c.command.join(" ")}`,
+            ...(c.stderr.length > 0 ? [c.stderr] : []),
+          ];
       }
     }
   }
