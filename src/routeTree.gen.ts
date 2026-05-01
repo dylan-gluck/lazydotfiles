@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as TrackedRouteImport } from "./routes/tracked";
 import { Route as SyncRouteImport } from "./routes/sync";
-import { Route as SettingsRouteImport } from "./routes/settings";
 import { Route as LogRouteImport } from "./routes/log";
 import { Route as DiscoverRouteImport } from "./routes/discover";
+import { Route as ConfigRouteImport } from "./routes/config";
 import { Route as AboutRouteImport } from "./routes/about";
 import { Route as IndexRouteImport } from "./routes/index";
 
@@ -27,11 +27,6 @@ const SyncRoute = SyncRouteImport.update({
   path: "/sync",
   getParentRoute: () => rootRouteImport,
 } as any);
-const SettingsRoute = SettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const LogRoute = LogRouteImport.update({
   id: "/log",
   path: "/log",
@@ -40,6 +35,11 @@ const LogRoute = LogRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: "/discover",
   path: "/discover",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ConfigRoute = ConfigRouteImport.update({
+  id: "/config",
+  path: "/config",
   getParentRoute: () => rootRouteImport,
 } as any);
 const AboutRoute = AboutRouteImport.update({
@@ -56,18 +56,18 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/about": typeof AboutRoute;
+  "/config": typeof ConfigRoute;
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
-  "/settings": typeof SettingsRoute;
   "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/about": typeof AboutRoute;
+  "/config": typeof ConfigRoute;
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
-  "/settings": typeof SettingsRoute;
   "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
@@ -75,26 +75,26 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/about": typeof AboutRoute;
+  "/config": typeof ConfigRoute;
   "/discover": typeof DiscoverRoute;
   "/log": typeof LogRoute;
-  "/settings": typeof SettingsRoute;
   "/sync": typeof SyncRoute;
   "/tracked": typeof TrackedRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
+  fullPaths: "/" | "/about" | "/config" | "/discover" | "/log" | "/sync" | "/tracked";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
-  id: "__root__" | "/" | "/about" | "/discover" | "/log" | "/settings" | "/sync" | "/tracked";
+  to: "/" | "/about" | "/config" | "/discover" | "/log" | "/sync" | "/tracked";
+  id: "__root__" | "/" | "/about" | "/config" | "/discover" | "/log" | "/sync" | "/tracked";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   AboutRoute: typeof AboutRoute;
+  ConfigRoute: typeof ConfigRoute;
   DiscoverRoute: typeof DiscoverRoute;
   LogRoute: typeof LogRoute;
-  SettingsRoute: typeof SettingsRoute;
   SyncRoute: typeof SyncRoute;
   TrackedRoute: typeof TrackedRoute;
 }
@@ -115,13 +115,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof SyncRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    "/settings": {
-      id: "/settings";
-      path: "/settings";
-      fullPath: "/settings";
-      preLoaderRoute: typeof SettingsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     "/log": {
       id: "/log";
       path: "/log";
@@ -134,6 +127,13 @@ declare module "@tanstack/react-router" {
       path: "/discover";
       fullPath: "/discover";
       preLoaderRoute: typeof DiscoverRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/config": {
+      id: "/config";
+      path: "/config";
+      fullPath: "/config";
+      preLoaderRoute: typeof ConfigRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/about": {
@@ -156,9 +156,9 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ConfigRoute: ConfigRoute,
   DiscoverRoute: DiscoverRoute,
   LogRoute: LogRoute,
-  SettingsRoute: SettingsRoute,
   SyncRoute: SyncRoute,
   TrackedRoute: TrackedRoute,
 };

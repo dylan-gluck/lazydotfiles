@@ -1,20 +1,20 @@
 ---
 # ldf-kkzc
 title: View panels and UX polish
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:53Z
-updated_at: 2026-05-01T04:22:05Z
+updated_at: 2026-05-01T18:20:25Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
-  - ldf-hia6
-  - ldf-zf8l
-  - ldf-auiv
-  - ldf-vcv0
-  - ldf-z560
-  - ldf-egel
+    - ldf-j9pe
+    - ldf-hia6
+    - ldf-zf8l
+    - ldf-auiv
+    - ldf-vcv0
+    - ldf-z560
+    - ldf-egel
 ---
 
 Land the views inventory in PRD §8 that earlier epics did not already complete: Status, Tracked, Config, Help, confirmation modals, theme polish.
@@ -72,3 +72,16 @@ Land the views inventory in PRD §8 that earlier epics did not already complete:
 ## Blocked-by
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter, Discovery, Track / Untrack, Operation log & restore, Sync.
+
+
+
+## Summary of Changes
+
+- Phase ldf-kkzc complete. All 7 child tasks completed.
+- New panels: StatusPanel (/), ConfigPanel (/config; replaces /settings).
+- New shared component: HelpOverlay + provider; `?` toggles, esc/\? close.
+- TrackedPanel polished: Enter -> /log filtered by file (search param).
+- Audits: no hex literals outside views/theme/, no hand-rolled width/height beyond `height={1}` status bars; locked in by tests.
+- Snapshot coverage extended to AppShell, BootstrapErrorPanel, plus new panels.
+- Specs under docs/specs/view-panels-and-ux-polish_*.md.
+- bun test: 364 pass, 0 fail. tsc --noEmit clean. oxlint/oxfmt clean.

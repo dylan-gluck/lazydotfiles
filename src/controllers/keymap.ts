@@ -31,9 +31,9 @@ export const globalKeymap: readonly Binding[] = [
   },
   {
     keys: ["3"],
-    description: "Settings",
+    description: "Config",
     run: ({ router }) => {
-      void router.navigate({ to: "/settings" });
+      void router.navigate({ to: "/config" });
     },
   },
   {

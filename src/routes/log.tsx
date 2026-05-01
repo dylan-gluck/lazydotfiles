@@ -5,10 +5,21 @@ import { useActor } from "../actors/use-actor";
 import { useLogPanel } from "../controllers/log.controller";
 import { LogPanel } from "../views/panels/log-panel";
 
-export const Route = createFileRoute("/log")({ component: Log });
+interface LogSearch {
+  readonly file?: string;
+}
+
+export const Route = createFileRoute("/log")({
+  component: Log,
+  validateSearch: (search: Record<string, unknown>): LogSearch => {
+    const file = search["file"];
+    return typeof file === "string" && file.length > 0 ? { file } : {};
+  },
+});
 
 function Log() {
-  const model = useLogPanel();
+  const { file } = Route.useSearch();
+  const model = useLogPanel({ file });
   const repo = useActor<unknown, RepoMessage>(REPO_ACTOR_ID);
   useEffect(() => {
     repo.send({ kind: "refresh", payload: undefined });

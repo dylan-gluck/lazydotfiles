@@ -8,12 +8,12 @@ created_at: 2026-05-01T04:21:53Z
 updated_at: 2026-05-01T18:04:21Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
-    - ldf-auiv
-    - ldf-vcv0
-    - ldf-egel
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
+  - ldf-auiv
+  - ldf-vcv0
+  - ldf-egel
 ---
 
 Deliver PRD §F8 CLI surface as a thin shell over the same services backing the TUI (ADR-001 §4.5: no business logic in CLI entry).
@@ -54,8 +54,6 @@ Deliver PRD §F8 CLI surface as a thin shell over the same services backing the 
 ## Blocked-by
 
 - Config & Bootstrap, Repo & VCS adapter, Discovery, Track / Untrack, Sync.
-
-
 
 ## Summary of Changes
 

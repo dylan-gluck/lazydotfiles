@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useCallback, useEffect } from "react";
 import { REPO_ACTOR_ID, type RepoMessage } from "../actors/repo.actor";
 import { useActor } from "../actors/use-actor";
 import { useTrackedPanel } from "../controllers/track.controller";
@@ -9,11 +9,18 @@ export const Route = createFileRoute("/tracked")({ component: Tracked });
 
 function Tracked() {
   const model = useTrackedPanel();
+  const router = useRouter();
   const repo = useActor<unknown, RepoMessage>(REPO_ACTOR_ID);
   useEffect(() => {
     repo.send({ kind: "refresh", payload: undefined });
     // mount-only refresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <TrackedPanel model={model} />;
+  const onViewLog = useCallback(
+    (file: string) => {
+      void router.navigate({ to: "/log", search: { file } });
+    },
+    [router],
+  );
+  return <TrackedPanel model={model} onViewLog={onViewLog} />;
 }

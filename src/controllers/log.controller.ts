@@ -22,7 +22,19 @@ export interface UseLogPanel {
   refresh(): void;
 }
 
-export function useLogPanel(): UseLogPanel {
+export interface UseLogPanelInput {
+  readonly file?: string;
+}
+
+export function filterOpsByFile(
+  ops: readonly OperationView[],
+  file: string | undefined,
+): readonly OperationView[] {
+  if (file === undefined) return ops;
+  return ops.filter((op) => op.filesTouched.some((p) => p === file || p.endsWith(`/${file}`)));
+}
+
+export function useLogPanel(input: UseLogPanelInput = {}): UseLogPanel {
   const services = useOptionalServices();
   const repo = useActor<RepoState, RepoMessage>(REPO_ACTOR_ID);
   const [operations, setOperations] = useState<readonly OperationView[]>([]);
@@ -41,10 +53,11 @@ export function useLogPanel(): UseLogPanel {
       setStatus("error");
       return;
     }
-    setOperations(r.value);
+    const filtered = filterOpsByFile(r.value, input.file);
+    setOperations(filtered);
     setStatus("ready");
-    if (r.value.length > 0 && focusId === null) setFocusId(r.value[0]?.opId ?? null);
-  }, [services, focusId]);
+    if (filtered.length > 0 && focusId === null) setFocusId(filtered[0]?.opId ?? null);
+  }, [services, focusId, input.file]);
 
   useEffect(() => {
     void refresh();

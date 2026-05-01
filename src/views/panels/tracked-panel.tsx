@@ -10,11 +10,12 @@ import { useTheme } from "../theme";
 
 export interface TrackedPanelProps {
   readonly model: UseTrackedPanel;
+  onViewLog?(target: string): void;
 }
 
-const FOOTER_HINT = "[j/k] move · [u] untrack · [b] toggle backups · [4] discover";
+const FOOTER_HINT = "[j/k] move · [enter] log · [u] untrack · [b] toggle backups · [4] discover";
 
-export function TrackedPanel({ model }: TrackedPanelProps): ReactNode {
+export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode {
   const t = useTheme();
   const [focusIdx, setFocusIdx] = useState(0);
   const [showBackups, setShowBackups] = useState(false);
@@ -44,6 +45,9 @@ export function TrackedPanel({ model }: TrackedPanelProps): ReactNode {
         return;
       case "b":
         setShowBackups((s) => !s);
+        return;
+      case "return":
+        if (focused !== undefined && onViewLog !== undefined) onViewLog(focused.target);
         return;
     }
   });

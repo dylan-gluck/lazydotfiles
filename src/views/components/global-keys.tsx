@@ -3,17 +3,19 @@ import { useKeyboard, useRenderer } from "@opentui/react";
 import { useRouter } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { dispatchKeymap, globalKeymap, type KeymapContext } from "../../controllers/keymap";
+import { useHelpOverlay } from "./help-overlay-context";
 
 export function GlobalKeys(): null {
   const router = useRouter();
   const renderer = useRenderer();
+  const help = useHelpOverlay();
   const ctx = useMemo<KeymapContext>(
     () => ({
       router,
       renderer: { destroy: () => renderer.destroy() },
-      ui: { toggleHelp: () => {} },
+      ui: { toggleHelp: help.toggle },
     }),
-    [router, renderer],
+    [router, renderer, help],
   );
   useKeyboard((event: KeyEvent) => {
     dispatchKeymap(globalKeymap, event, ctx);
