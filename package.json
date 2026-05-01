@@ -5,7 +5,7 @@
   "module": "src/index.tsx",
   "scripts": {
     "dev": "bun run generate-routes && bun run --watch src/index.tsx",
-    "check": "concurrently 'bun fmt' 'bun lint:fix'",
+    "check": "bun lint:fix && bun fmt",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",

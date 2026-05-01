@@ -1,11 +1,11 @@
 ---
 # ldf-z560
 title: Operation log and restore (F5, F7)
-status: in-progress
+status: completed
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:47Z
-updated_at: 2026-05-01T17:04:29Z
+updated_at: 2026-05-01T17:23:41Z
 parent: ldf-euyx
 blocked_by:
     - ldf-j9pe
@@ -53,3 +53,14 @@ Deliver PRD §F5 operation log + §F7 restore from backup, with the `/log` view 
 ## Blocked-by
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter, Track / Untrack.
+
+
+## Summary of Changes
+- Specs: 6 files at `docs/specs/operation-log-and-restore-f5-f7_*.md`.
+- Domain: `OperationView` schema.
+- Repository: `JjRepository.{logAtOp,diffSummaryAtOp,diffAtOp}` plus `parseDiffSummary`.
+- Services: `OperationService`, `RestoreService` wired in `composition/services.ts`.
+- Actor: `repo.actor` extended with restore message+state+events; chained refresh on `restoreOk`.
+- View: `LogPanel` + `useLogPanel` controller + `/log` route + `[6] log` keybinding.
+- Tests: 273 pass (45 files); A7 integration test green; tsc + oxlint + oxfmt clean.
+- PRD acceptance: A7 demonstrated end-to-end. F5 (op log + diff + restore) and F7 (backup restore path) implemented.

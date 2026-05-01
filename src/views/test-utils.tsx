@@ -10,14 +10,14 @@ export type TestSetup = Awaited<ReturnType<typeof testRender>>;
  * mount produce "update was not wrapped in act(...)" warnings.
  */
 export async function renderToFrame(
-   node: ReactNode,
-   options: Parameters<typeof testRender>[1],
+  node: ReactNode,
+  options: Parameters<typeof testRender>[1],
 ): Promise<{ setup: TestSetup; frame: string }> {
-   const setup = await testRender(node, options);
-   await act(async () => {
-      await setup.renderOnce();
-   });
-   return { setup, frame: setup.captureCharFrame() };
+  const setup = await testRender(node, options);
+  await act(async () => {
+    await setup.renderOnce();
+  });
+  return { setup, frame: setup.captureCharFrame() };
 }
 
 /**
@@ -28,8 +28,8 @@ export async function renderToFrame(
  * Wrap teardown to keep React quiet.
  */
 export function destroyTestSetup(setup: TestSetup | undefined): void {
-   if (!setup) return;
-   act(() => {
-      setup.renderer.destroy();
-   });
+  if (!setup) return;
+  act(() => {
+    setup.renderer.destroy();
+  });
 }

@@ -21,6 +21,18 @@ export interface JjRepository {
   opLog(opts: { root: string; limit?: number }): Promise<Result<readonly Operation[], RepoError>>;
   log(opts: { root: string; limit?: number }): Promise<Result<readonly Operation[], RepoError>>;
   opRestore(opts: { root: string; opId: string }): Promise<Result<void, RepoError>>;
+  /**
+   * Look up the change at `@` as of a specific operation. Returns `null` when
+   * the operation has no `@` change (e.g. `add workspace`, the root op).
+   */
+  logAtOp(opts: { root: string; opId: string }): Promise<Result<Operation | null, RepoError>>;
+  /** Files touched at `@` as of a specific operation, paths relative to `root`. */
+  diffSummaryAtOp(opts: {
+    root: string;
+    opId: string;
+  }): Promise<Result<readonly string[], RepoError>>;
+  /** Git-format unified diff at `@` as of a specific operation. */
+  diffAtOp(opts: { root: string; opId: string }): Promise<Result<string, RepoError>>;
   status(opts: { root: string }): Promise<Result<SyncState, RepoError>>;
   gitFetch(opts: { root: string }): Promise<Result<void, RepoError>>;
   gitPush(opts: { root: string }): Promise<Result<void, RepoError>>;
@@ -139,6 +151,26 @@ function parseOperationStream(stdout: string): Result<readonly Operation[], Repo
   return ok(out);
 }
 
+/**
+ * Parse a `jj diff --summary` block. Each non-empty line has the form
+ * `<status> <path>` where `<status>` is one of `A|M|D|R|C` (single char).
+ * Returns the list of paths in source order.
+ */
+export function parseDiffSummary(stdout: string): readonly string[] {
+  const out: string[] = [];
+  for (const raw of stdout.split("\n")) {
+    const line = raw.trimEnd();
+    if (line.length === 0) continue;
+    const space = line.indexOf(" ");
+    if (space === -1) {
+      out.push(line);
+      continue;
+    }
+    out.push(line.slice(space + 1));
+  }
+  return out;
+}
+
 function parseStatus(text: string, remote: string | null): SyncState {
   // `jj status` prints "The working copy has no changes." (or similar) when clean.
   // "Working copy changes:" precedes a non-empty change list.
@@ -218,6 +250,43 @@ export function createJjRepository(): JjRepository {
     async opRestore({ root, opId }) {
       const r = await runJj(["op", "restore", opId], { cwd: root });
       return r.ok ? ok(undefined) : err(r.error);
+    },
+
+    async logAtOp({ root, opId }) {
+      const args = ["log", "--at-op", opId, "--no-graph", "-r", "@", "-T", LOG_TEMPLATE];
+      const r = await runJj(args, { cwd: root });
+      if (!r.ok) {
+        // Root operations and `add workspace` ops have no @ working-copy commit.
+        // jj exits non-zero with a recognizable message; treat as "no change".
+        if (r.error.tag === "Spawn" && /doesn't have a working-copy commit/i.test(r.error.stderr)) {
+          return ok(null);
+        }
+        return err(r.error);
+      }
+      const parsed = parseOperationStream(r.value.stdout);
+      if (!parsed.ok) return parsed;
+      const first = parsed.value[0];
+      return ok(first ?? null);
+    },
+
+    async diffSummaryAtOp({ root, opId }) {
+      const r = await runJj(["diff", "--at-op", opId, "--summary", "-r", "@"], { cwd: root });
+      if (!r.ok) {
+        if (r.error.tag === "Spawn" && /doesn't have a working-copy commit/i.test(r.error.stderr)) {
+          return ok([]);
+        }
+        return err(r.error);
+      }
+      return ok(parseDiffSummary(r.value.stdout));
+    },
+
+    async diffAtOp({ root, opId }) {
+      const r = await runJj(["diff", "--at-op", opId, "--git", "-r", "@"], { cwd: root });
+      if (r.ok) return ok(r.value.stdout);
+      if (r.error.tag === "Spawn" && /doesn't have a working-copy commit/i.test(r.error.stderr)) {
+        return ok("");
+      }
+      return err(r.error);
     },
 
     async gitFetch({ root }) {

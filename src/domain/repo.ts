@@ -46,6 +46,22 @@ export const OperationSchema = object({
 });
 export type Operation = Infer<typeof OperationSchema>;
 
+/**
+ * Unified projection of `jj op log` enriched with the change at `@` as of that op.
+ * `opId` is what `jj op restore` accepts; `changeId` is the short change id (or null
+ * for ops with no `@` change, like `add workspace`).
+ */
+export const OperationViewSchema = object({
+  opId: string(),
+  changeId: nullableString(),
+  parentOpId: nullableString(),
+  kind: OperationKindSchema,
+  description: string(),
+  at: string(),
+  filesTouched: array(string()),
+});
+export type OperationView = Infer<typeof OperationViewSchema>;
+
 export const SyncStateSchema = object({
   lastSyncAt: nullableString(),
   ahead: number(),

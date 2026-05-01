@@ -8,9 +8,9 @@ created_at: 2026-05-01T04:21:47Z
 updated_at: 2026-05-01T16:51:00Z
 parent: ldf-euyx
 blocked_by:
-    - ldf-j9pe
-    - ldf-hia6
-    - ldf-zf8l
+  - ldf-j9pe
+  - ldf-hia6
+  - ldf-zf8l
 ---
 
 Deliver atomic add/remove with snapshot-protected rollback (PRD §F3, §F4, §F7).
@@ -62,8 +62,6 @@ Deliver atomic add/remove with snapshot-protected rollback (PRD §F3, §F4, §F7
 ## Blocked-by
 
 - Foundation, Config & Bootstrap, Repo & VCS adapter.
-
-
 
 ## Summary of Changes
 

@@ -46,6 +46,9 @@ function fakeJj(opts: FakeOpts, state: FakeState): JjRepository {
       state.restored.push(opId);
       return ok(undefined);
     },
+    logAtOp: async () => ok(null),
+    diffSummaryAtOp: async () => ok([]),
+    diffAtOp: async () => ok(""),
   };
 }
 

@@ -13,6 +13,7 @@ export interface RepoState {
   readonly operations: readonly Operation[];
   readonly dirty: boolean;
   readonly error: ServiceError | null;
+  readonly restoring: { kind: "op" | "backup" } | null;
 }
 
 export type RepoMessage =
@@ -21,11 +22,17 @@ export type RepoMessage =
       "refreshOk",
       { tracked: readonly TrackedFile[]; operations: readonly Operation[]; dirty: boolean }
     >
-  | Message<"refreshFailed", { error: ServiceError }>;
+  | Message<"refreshFailed", { error: ServiceError }>
+  | Message<"restoreToOp", { opId: string }>
+  | Message<"restoreFromBackup", { backupId: string }>
+  | Message<"restoreOk", { kind: "op" | "backup" }>
+  | Message<"restoreFailed", { error: ServiceError }>;
 
 export type RepoEvent =
   | Event<"operationsLoaded", { count: number }>
-  | Event<"repoDirtyChanged", { dirty: boolean }>;
+  | Event<"repoDirtyChanged", { dirty: boolean }>
+  | Event<"restored", { kind: "op" | "backup" }>
+  | Event<"restoreFailed", { error: ServiceError }>;
 
 export const REPO_ACTOR_ID = "repo";
 
@@ -35,6 +42,7 @@ export const initialRepoState: RepoState = {
   operations: [],
   dirty: false,
   error: null,
+  restoring: null,
 };
 
 const refreshEffect: Effect<RepoMessage, Services> = async ({ repo }) => {
@@ -56,6 +64,24 @@ const refreshEffect: Effect<RepoMessage, Services> = async ({ repo }) => {
   };
 };
 
+function restoreToOpEffect(opId: string): Effect<RepoMessage, Services> {
+  return async ({ restore }) => {
+    const r = await restore.restoreToOp(opId);
+    return r.ok
+      ? { kind: "restoreOk", payload: { kind: "op" } }
+      : { kind: "restoreFailed", payload: { error: r.error } };
+  };
+}
+
+function restoreFromBackupEffect(backupId: string): Effect<RepoMessage, Services> {
+  return async ({ restore }) => {
+    const r = await restore.restoreFromBackup(backupId);
+    return r.ok
+      ? { kind: "restoreOk", payload: { kind: "backup" } }
+      : { kind: "restoreFailed", payload: { error: r.error } };
+  };
+}
+
 export const repoReducer: Reducer<RepoState, RepoMessage, RepoEvent, Services> = (state, msg) => {
   switch (msg.kind) {
     case "refresh":
@@ -72,7 +98,7 @@ export const repoReducer: Reducer<RepoState, RepoMessage, RepoEvent, Services> =
       ];
       if (dirtyChanged) events.push({ kind: "repoDirtyChanged", payload: { dirty } });
       return {
-        state: { status: "ready", tracked, operations, dirty, error: null },
+        state: { ...state, status: "ready", tracked, operations, dirty, error: null },
         events,
         effects: [],
       };
@@ -81,6 +107,34 @@ export const repoReducer: Reducer<RepoState, RepoMessage, RepoEvent, Services> =
       return {
         state: { ...state, status: "error", error: msg.payload.error },
         events: [],
+        effects: [],
+      };
+    case "restoreToOp": {
+      if (state.restoring !== null) return { state, events: [], effects: [] };
+      return {
+        state: { ...state, restoring: { kind: "op" }, error: null },
+        events: [],
+        effects: [restoreToOpEffect(msg.payload.opId)],
+      };
+    }
+    case "restoreFromBackup": {
+      if (state.restoring !== null) return { state, events: [], effects: [] };
+      return {
+        state: { ...state, restoring: { kind: "backup" }, error: null },
+        events: [],
+        effects: [restoreFromBackupEffect(msg.payload.backupId)],
+      };
+    }
+    case "restoreOk":
+      return {
+        state: { ...state, restoring: null, status: "loading" },
+        events: [{ kind: "restored", payload: { kind: msg.payload.kind } }],
+        effects: [refreshEffect],
+      };
+    case "restoreFailed":
+      return {
+        state: { ...state, restoring: null, error: msg.payload.error },
+        events: [{ kind: "restoreFailed", payload: { error: msg.payload.error } }],
         effects: [],
       };
   }

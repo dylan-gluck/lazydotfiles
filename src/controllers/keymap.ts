@@ -51,6 +51,13 @@ export const globalKeymap: readonly Binding[] = [
     },
   },
   {
+    keys: ["6"],
+    description: "Log",
+    run: ({ router }) => {
+      void router.navigate({ to: "/log" });
+    },
+  },
+  {
     keys: ["?"],
     description: "Help",
     run: ({ ui }) => ui.toggleHelp(),

@@ -12,6 +12,8 @@ import { type BootstrapService, createBootstrapService } from "../services/boots
 import { type ConfigService, createConfigService } from "../services/config.service";
 import { type DiscoveryService, createDiscoveryService } from "../services/discovery.service";
 import { createRepoService, type RepoService } from "../services/repo.service";
+import { createOperationService, type OperationService } from "../services/operation.service";
+import { createRestoreService, type RestoreService } from "../services/restore.service";
 import { createTrackService, type TrackService } from "../services/track.service";
 
 export interface Services {
@@ -22,6 +24,8 @@ export interface Services {
   readonly discovery: DiscoveryService;
   readonly backups: BackupService;
   readonly track: TrackService;
+  readonly operation: OperationService;
+  readonly restore: RestoreService;
 }
 
 export function wireServices(deps: { home: string }): Services {
@@ -44,9 +48,8 @@ export function wireServices(deps: { home: string }): Services {
   const repo = createRepoService({ jj, tracked: trackedRepo, root: dotfilesRoot });
   const scanner = createFsScannerRepository();
   const discovery = createDiscoveryService({ scanner });
-  const backups = createBackupService({
-    repo: createBackupRepository({ backupRoot }),
-  });
+  const backupRepo = createBackupRepository({ backupRoot });
+  const backups = createBackupService({ repo: backupRepo });
   const track = createTrackService({
     home: deps.home,
     dotfilesRoot,
@@ -56,5 +59,25 @@ export function wireServices(deps: { home: string }): Services {
     jj,
     backups,
   });
-  return { home: deps.home, config, bootstrap, repo, discovery, backups, track };
+  const operation = createOperationService({ jj, root: dotfilesRoot });
+  const restore = createRestoreService({
+    home: deps.home,
+    dotfilesRoot,
+    jj,
+    tracked: trackedRepo,
+    symlinks,
+    fs,
+    backups: backupRepo,
+  });
+  return {
+    home: deps.home,
+    config,
+    bootstrap,
+    repo,
+    discovery,
+    backups,
+    track,
+    operation,
+    restore,
+  };
 }

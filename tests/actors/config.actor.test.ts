@@ -68,6 +68,14 @@ function makeServices(config: ConfigService): Services {
       add: async () => ok({} as never),
       remove: async () => ok({} as never),
     },
+    operation: {
+      list: async () => ok([]),
+      diff: async () => ok(""),
+    },
+    restore: {
+      restoreToOp: async () => ok({ rematerialized: [] }),
+      restoreFromBackup: async () => ok({} as never),
+    },
   };
 }
 
