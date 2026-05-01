@@ -1,22 +1,22 @@
 ---
 # ldf-swfv
 title: Acceptance and QA (A1-A9)
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-05-01T04:21:53Z
-updated_at: 2026-05-01T16:29:45Z
+updated_at: 2026-05-01T18:51:40Z
 parent: ldf-euyx
 blocked_by:
-  - ldf-j9pe
-  - ldf-hia6
-  - ldf-zf8l
-  - ldf-auiv
-  - ldf-vcv0
-  - ldf-z560
-  - ldf-egel
-  - ldf-zfcv
-  - ldf-kkzc
+    - ldf-j9pe
+    - ldf-hia6
+    - ldf-zf8l
+    - ldf-auiv
+    - ldf-vcv0
+    - ldf-z560
+    - ldf-egel
+    - ldf-zfcv
+    - ldf-kkzc
 ---
 
 Cross-cutting acceptance verification. Walks PRD §9 A1–A9 end-to-end on a clean account, captures a script that future regressions can run, and resolves every PRD §10 open question with a documented default before declaring MVP done.
@@ -62,3 +62,27 @@ Cross-cutting acceptance verification. Walks PRD §9 A1–A9 end-to-end on a cle
 ## Blocked-by
 
 - Every prior epic.
+
+
+
+## Summary of Changes
+
+QA build phase shipped on 2026-05-01.
+
+**Acceptance evidence (A1–A9):**
+- A1 → `tests/e2e/a1-boot-speed.test.ts` (new)
+- A2 → `tests/discovery.a2.test.ts`
+- A3 → `tests/e2e/a3-add-round-trip.test.ts` (new)
+- A4 → `src/services/track.service.untrack-history.integration.test.ts`
+- A5 → `src/services/track.service.sigterm.integration.test.ts`
+- A6 → `src/services/sync.service.a6.integration.test.ts`
+- A7 → `src/services/restore.service.a7.integration.test.ts`
+- A8 → `docs/audits/a8-test-coverage.md` + `src/services/sync.editor.test.ts` (new, closes only §3.1 gap)
+- A9 → `tests/e2e/a9-static-invariants.test.ts` + `src/views/no-process-exit.test.ts` (new) + existing layout/hex guards + `scripts/check-layers.ts` (new)
+
+**Specs:** 13 specs at `docs/specs/acceptance-and-qa-a1-a9_*.md`.
+**Open questions:** Q1 deferred, Q2/Q4 verified, Q3 surfaced via follow-up bean. Recorded in `docs/audits/q-resolutions.md` and release notes.
+**Release notes:** `docs/RELEASE_NOTES_v0.1.md`.
+**Follow-up beans:** ldf-zm82, ldf-4lmw, ldf-nsgo, ldf-p1b7, ldf-euox, ldf-fy8o, ldf-2lcb (parented under milestone ldf-euyx).
+
+**Verification:** `bun test` 387/387 pass, `bun run typecheck` clean, `bun lint` 0 errors, `bun fmt` clean, `bun run check:layers` green.
