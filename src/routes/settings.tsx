@@ -15,9 +15,7 @@ function Settings() {
         <text>Theme: Dark</text>
         <text>Notifications: Enabled</text>
       </box>
-      <text attributes={TextAttributes.DIM}>
-        (Settings are for demonstration only)
-      </text>
+      <text attributes={TextAttributes.DIM}>(Settings are for demonstration only)</text>
     </box>
   );
 }

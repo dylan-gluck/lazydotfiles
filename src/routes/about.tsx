@@ -11,9 +11,7 @@ function About() {
       <text fg="cyan" attributes={TextAttributes.BOLD} marginBottom={1}>
         About
       </text>
-      <text>
-        This is a terminal application built with OpenTUI and TanStack Router.
-      </text>
+      <text>This is a terminal application built with OpenTUI and TanStack Router.</text>
     </box>
   );
 }
