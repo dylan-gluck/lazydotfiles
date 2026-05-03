@@ -7,6 +7,10 @@ import type { UseDiscoveryPanel } from "../../controllers/discovery.controller";
 import type { CandidateStatus, DiscoveryCandidate } from "../../domain/candidate";
 import { ConfirmModal } from "../components/confirm-modal";
 import { useInputFocusEffect } from "../components/input-focus-context";
+import {
+  type PanelBinding,
+  usePublishPanelBindings,
+} from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { shortDir, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
@@ -22,6 +26,18 @@ const TOAST_MS = 4000;
 const MAX_VISIBLE_ROWS = 24;
 const GROUP_DIR_MAX = 48;
 const CHILD_NAME_MAX = 56;
+
+const BINDINGS: readonly PanelBinding[] = [
+  { keys: "j/k", description: "move" },
+  { keys: "space", description: "expand" },
+  { keys: "a/A", description: "accept" },
+  { keys: "d/D", description: "defer" },
+  { keys: "X", description: "reject group" },
+  { keys: "/", description: "search" },
+  { keys: "f", description: "filter" },
+  { keys: "u", description: "undo" },
+  { keys: "r", description: "rescan" },
+];
 
 type StatusFilter = "all" | "pending" | "accepted" | "deferred" | "rejected";
 const STATUS_CYCLE: readonly StatusFilter[] = [
@@ -193,6 +209,7 @@ function formatNodeCounts(node: DirNode): string {
 export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode {
   const t = useTheme();
   const homeDir = home ?? process.env["HOME"] ?? "";
+  usePublishPanelBindings(BINDINGS);
 
   const [filter, setFilter] = useState<StatusFilter>("pending");
   const [query, setQuery] = useState("");
@@ -500,7 +517,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
         paddingLeft={1}
         paddingRight={1}
       >
-        <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           /discover
         </text>
         <text fg={t.fg.dim}>{headerLine}</text>
@@ -551,7 +568,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
           </box>
         ) : rows.length === 0 ? (
           <box flexGrow={1} alignItems="center" justifyContent="center">
-            <box flexDirection="column" alignItems="center" gap={t.space.xs}>
+            <box flexDirection="column" alignItems="center">
               {query.length > 0 ? (
                 <>
                   <text fg={t.fg.default}>No matches for '{query}'</text>
@@ -601,7 +618,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
                 const hint = isFocused ? "  A·D·X" : "";
                 const line = `${cursor} ${indent}${triangle} ${display}  ${counts}${hint}`;
                 return (
-                  <text key={`d:${row.node.path}`} fg={isFocused ? t.fg.accent : t.fg.default}>
+                  <text key={`d:${row.node.path}`} fg={isFocused ? t.fg.focus : t.fg.default}>
                     {line}
                   </text>
                 );
@@ -614,7 +631,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
               const hint = isFocused ? "  a·d·x" : "";
               const line = `${cursor} ${indent}${reasonPad} ${display}${statusSuffix}${hint}`;
               return (
-                <text key={`c:${c.id}`} fg={isFocused ? t.fg.accent : statusFg(c.status, t)}>
+                <text key={`c:${c.id}`} fg={isFocused ? t.fg.focus : statusFg(c.status, t)}>
                   {line}
                 </text>
               );

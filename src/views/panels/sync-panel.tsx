@@ -3,6 +3,10 @@ import { useKeyboard } from "@opentui/react";
 import { type ReactNode, useEffect, useState } from "react";
 import type { UseSyncPanel } from "../../controllers/sync.controller";
 import { INTERVAL_MS } from "../../services/sync.scheduler";
+import {
+  type PanelBinding,
+  usePublishPanelBindings,
+} from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
 import { useTheme } from "../theme";
@@ -11,8 +15,13 @@ export interface SyncPanelProps {
   readonly model: UseSyncPanel;
 }
 
-const FOOTER_HINT =
-  "[f] fetch · [p] push · [s] sync · [j/k] move · [o] ours · [t] theirs · [e] edit";
+const BINDINGS: readonly PanelBinding[] = [
+  { keys: "f", description: "fetch" },
+  { keys: "p", description: "push" },
+  { keys: "s", description: "sync" },
+  { keys: "j/k", description: "conflict" },
+  { keys: "o/t/e", description: "resolve" },
+];
 
 function nextAutoSyncIso(model: UseSyncPanel): string | null {
   const interval = model.schedule.interval;
@@ -25,6 +34,7 @@ function nextAutoSyncIso(model: UseSyncPanel): string | null {
 
 export function SyncPanel({ model }: SyncPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelBindings(BINDINGS);
   const [conflictIdx, setConflictIdx] = useState(0);
   const inFlight =
     model.phase === "fetching" ||
@@ -83,7 +93,7 @@ export function SyncPanel({ model }: SyncPanelProps): ReactNode {
     <box flexDirection="column" flexGrow={1}>
       {/* Header */}
       <box flexDirection="row" gap={t.space.md} paddingLeft={1} paddingRight={1}>
-        <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           {remoteLabel}
         </text>
         <text fg={t.fg.default}>{aheadBehind}</text>
@@ -129,7 +139,7 @@ export function SyncPanel({ model }: SyncPanelProps): ReactNode {
               const isFocused = idx === conflictIdx;
               return (
                 <box key={c.path} flexDirection="row" gap={t.space.sm}>
-                  <text fg={isFocused ? t.fg.accent : t.fg.default}>
+                  <text fg={isFocused ? t.fg.focus : t.fg.default}>
                     {isFocused ? "› " : "  "}
                     {c.path}
                   </text>
@@ -164,18 +174,11 @@ export function SyncPanel({ model }: SyncPanelProps): ReactNode {
         )}
       </box>
 
-      {/* Footer */}
-      <box
-        height={1}
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      {/* Footer state rail */}
+      <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
         <text fg={t.fg.dim}>
           {inFlight ? `${model.phase}…` : `${model.conflicts.length} conflicts`}
         </text>
-        <text fg={t.fg.dim}>{FOOTER_HINT}</text>
       </box>
     </box>
   );

@@ -23,18 +23,18 @@ export function HelpOverlay({ bindings, onClose }: HelpOverlayProps): ReactNode 
         padding={t.space.md}
         gap={t.space.sm}
       >
-        <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           Keybindings
         </text>
         <box flexDirection="row" gap={t.space.lg}>
-          <box flexDirection="column" gap={t.space.xs}>
+          <box flexDirection="column">
             {bindings.map((b) => (
-              <text key={b.keys.join(",")} fg={t.fg.accent}>
+              <text key={b.keys.join(",")} fg={t.fg.focus}>
                 {b.keys.join(", ")}
               </text>
             ))}
           </box>
-          <box flexDirection="column" gap={t.space.xs}>
+          <box flexDirection="column">
             {bindings.map((b) => (
               <text key={b.keys.join(",")} fg={t.fg.default}>
                 {b.description}

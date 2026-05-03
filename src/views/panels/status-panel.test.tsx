@@ -53,13 +53,18 @@ describe("StatusPanel", () => {
     expect(frame).toContain("clean");
   });
 
-  test("renders three counter cards", async () => {
+  test("renders single-line summary with counts and sync state", async () => {
     const frame = await render(model({ trackedCount: 12, queueCount: 4 }));
-    expect(frame).toContain("Tracked");
-    expect(frame).toContain("12");
-    expect(frame).toContain("Discovery queue");
-    expect(frame).toContain("4");
-    expect(frame).toContain("Sync");
+    expect(frame).toContain("12 tracked");
+    expect(frame).toContain("4 queued");
+    expect(frame).toContain("sync never");
+    expect(frame).toContain("no remote");
+  });
+
+  test("empty body shows actionable next-step hint", async () => {
+    const frame = await render(model());
+    expect(frame).toContain("No operations yet");
+    expect(frame).toContain("Press 4");
   });
 
   test("renders recent operations", async () => {

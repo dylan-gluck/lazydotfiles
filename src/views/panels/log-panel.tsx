@@ -5,15 +5,26 @@ import type { UseLogPanel } from "../../controllers/log.controller";
 import type { OperationKind, OperationView } from "../../domain/repo";
 import { ConfirmModal } from "../components/confirm-modal";
 import { useInputFocusEffect } from "../components/input-focus-context";
+import {
+  type PanelBinding,
+  usePublishPanelBindings,
+} from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
+import { truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 
 export interface LogPanelProps {
   readonly model: UseLogPanel;
 }
 
-const FOOTER_HINT = "[j/k] move · [enter] diff · [R] restore · [B] backup · [PgUp/PgDn] scroll";
+const BINDINGS: readonly PanelBinding[] = [
+  { keys: "j/k", description: "move" },
+  { keys: "enter", description: "diff" },
+  { keys: "R", description: "rewind" },
+  { keys: "B", description: "restore backup" },
+  { keys: "PgUp/Dn", description: "scroll" },
+];
 const PAGE_LINES = 16;
 
 function kindIcon(k: OperationKind): string {
@@ -23,11 +34,11 @@ function kindIcon(k: OperationKind): string {
     case "track":
       return "+";
     case "untrack":
-      return "-";
+      return "−";
     case "sync":
       return "↻";
     case "edit":
-      return "·";
+      return "~";
   }
 }
 
@@ -51,6 +62,7 @@ type PendingRestore = { kind: "op" | "backup"; op: OperationView } | null;
 
 export function LogPanel({ model }: LogPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelBindings(BINDINGS);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [pending, setPending] = useState<PendingRestore>(null);
   useInputFocusEffect(pending !== null);
@@ -120,43 +132,60 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
     model.diff !== null && model.diff.opId === model.focusId ? model.diff.text.split("\n") : [];
   const visibleDiff = diffLines.slice(scrollOffset, scrollOffset + 200);
 
+  const SIDEBAR_DESC_MAX = 18;
+  const DETAIL_LINE_MAX = 100;
+  const focusedTitle =
+    focused === undefined
+      ? ""
+      : focused.description.trim().length > 0
+        ? focused.description
+        : `(no description)`;
+
   return (
     <box flexDirection="column" flexGrow={1}>
-      <box flexDirection="row" flexGrow={1} gap={t.space.sm}>
-        <box flexBasis={42} flexShrink={0} flexDirection="column">
+      <box flexDirection="row" flexGrow={1} gap={t.space.sm} overflow="hidden">
+        <box flexGrow={1} flexBasis={0} flexShrink={1} flexDirection="column" overflow="hidden">
           {model.operations.length === 0 && model.status === "ready" ? (
             <text fg={t.fg.dim}>No operations</text>
           ) : null}
           {model.operations.map((o) => {
             const isFocused = o.opId === model.focusId;
+            const cursor = isFocused ? "›" : " ";
+            const desc = truncateToWidth(
+              o.description.trim().length > 0 ? o.description : `(${o.kind})`,
+              SIDEBAR_DESC_MAX,
+            );
+            // Sidebar omits short hash — detail pane shows it.
+            const line = `${cursor} ${kindIcon(o.kind)} ${desc} ${relativeAge(o.at)}`;
             return (
-              <box key={o.opId} flexDirection="row" gap={t.space.sm}>
-                <text fg={isFocused ? t.fg.accent : t.fg.default}>
-                  {isFocused ? "›" : " "} {kindIcon(o.kind)} {o.description}
-                </text>
-                <text fg={t.fg.dim}>{shortId(o.opId)}</text>
-                <text fg={t.fg.dim}>{relativeAge(o.at)}</text>
-              </box>
+              <text key={o.opId} fg={isFocused ? t.fg.focus : t.fg.default}>
+                {line}
+              </text>
             );
           })}
         </box>
-        <box flexGrow={1} flexDirection="column">
+        <box flexGrow={2} flexBasis={0} flexDirection="column" overflow="hidden">
           {focused === undefined ? (
             <text fg={t.fg.dim}>(no selection)</text>
           ) : (
             <>
-              <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
-                {focused.description}
+              <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
+                {truncateToWidth(focusedTitle, DETAIL_LINE_MAX)}
               </text>
               <text fg={t.fg.dim}>
-                {focused.kind} · {shortId(focused.opId)} · {focused.at}
+                {`${focused.kind} · ${shortId(focused.opId)} · ${relativeAge(focused.at)}`}
               </text>
               {focused.filesTouched.length > 0 ? (
-                <text fg={t.fg.dim}>files: {focused.filesTouched.join(", ")}</text>
+                <text fg={t.fg.dim}>
+                  {truncateToWidth(
+                    `files: ${focused.filesTouched.join(", ")}`,
+                    DETAIL_LINE_MAX,
+                  )}
+                </text>
               ) : (
                 <text fg={t.fg.dim}>files: (none)</text>
               )}
-              <box flexDirection="column" flexGrow={1} marginTop={t.space.sm}>
+              <box flexDirection="column" flexGrow={1} marginTop={t.space.sm} overflow="hidden">
                 {model.diffLoading ? (
                   <text fg={t.fg.dim}>loading diff…</text>
                 ) : visibleDiff.length === 0 ? (
@@ -164,7 +193,7 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
                 ) : (
                   visibleDiff.map((line, i) => (
                     <text key={`${scrollOffset + i}`} fg={t.fg.default}>
-                      {line}
+                      {truncateToWidth(line, DETAIL_LINE_MAX)}
                     </text>
                   ))
                 )}
@@ -173,19 +202,12 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
           )}
         </box>
       </box>
-      <box
-        height={1}
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
         <text fg={t.fg.dim}>
           {model.restoring !== null
             ? `restoring (${model.restoring.kind})…`
             : `${model.operations.length} operations`}
         </text>
-        <text fg={t.fg.dim}>{FOOTER_HINT}</text>
       </box>
       {pending !== null
         ? (() => {

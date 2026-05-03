@@ -22,7 +22,7 @@ export interface UseStatusPanel {
   readonly toast: { readonly message: string; readonly tone: "info" | "danger" } | null;
 }
 
-const RECENT_LIMIT = 5;
+const RECENT_LIMIT = 20;
 
 function firstError(...errs: readonly (ServiceError | null)[]): ServiceError | null {
   for (const e of errs) if (e !== null) return e;

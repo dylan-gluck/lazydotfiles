@@ -48,7 +48,7 @@ export function ConfirmModal(props: ConfirmModalProps): ReactNode {
         padding={t.space.md}
         gap={t.space.sm}
       >
-        <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           {props.title}
         </text>
         <text fg={t.fg.default}>{props.summary}</text>

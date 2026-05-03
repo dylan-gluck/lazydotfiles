@@ -4,8 +4,18 @@ import { type ReactNode, useState } from "react";
 import type { UseConfigPanel } from "../../controllers/config.controller";
 import type { Config } from "../../domain/config";
 import { useInputFocusEffect } from "../components/input-focus-context";
+import {
+  type PanelBinding,
+  usePublishPanelBindings,
+} from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { useTheme } from "../theme";
+
+const BINDINGS: readonly PanelBinding[] = [
+  { keys: "j/k", description: "move" },
+  { keys: "enter", description: "edit / toggle" },
+  { keys: "esc", description: "cancel" },
+];
 
 export interface ConfigPanelProps {
   readonly model: UseConfigPanel;
@@ -91,6 +101,7 @@ function flatten(sections: readonly Section[]): readonly FlatRow[] {
 
 export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelBindings(BINDINGS);
   const [focusIdx, setFocusIdx] = useState(0);
   const [draft, setDraft] = useState<{ option: string; text: string } | null>(null);
   useInputFocusEffect(draft !== null);
@@ -179,9 +190,8 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
             flexDirection="column"
             borderStyle={t.border.default}
             padding={t.space.sm}
-            gap={t.space.xs}
           >
-            <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+            <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
               {s.title}
             </text>
             {s.rows.map((r) => {
@@ -191,7 +201,7 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
               return (
                 <box key={r.option} flexDirection="row" gap={t.space.md}>
                   <box flexGrow={1} flexBasis={0}>
-                    <text fg={isFocused ? t.fg.accent : t.fg.default}>
+                    <text fg={isFocused ? t.fg.focus : t.fg.default}>
                       {isFocused ? "› " : "  "}
                       {r.option}
                     </text>
@@ -212,17 +222,10 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
         </box>
       ) : null}
 
-      <box
-        height={1}
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
         <text fg={t.fg.dim}>
           {model.status === "saving" ? "saving…" : `${flat.length} options`}
         </text>
-        <text fg={t.fg.dim}>[j/k] move · [enter] edit/toggle · [esc] cancel</text>
       </box>
 
       {draft !== null ? (
@@ -239,7 +242,7 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
             padding={t.space.md}
             gap={t.space.sm}
           >
-            <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
+            <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
               {draft.option}
             </text>
             <text fg={t.fg.default}>{draft.text || "(empty)"}</text>

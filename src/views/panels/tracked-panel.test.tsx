@@ -60,16 +60,17 @@ describe("TrackedPanel", () => {
     expect(frame).toContain("No tracked files");
   });
 
-  test("renders rows with target, kind, age, backups count", async () => {
+  test("renders rows with basename + age (kind shown in detail pane)", async () => {
     const { frame } = await render(
       model({
         tracked: [file({ id: "a", target: "/h/.zshrc" }), file({ id: "b", target: "/h/.bashrc" })],
       }),
     );
-    expect(frame).toContain("/h/.zshrc");
-    expect(frame).toContain("/h/.bashrc");
-    expect(frame).toContain("file");
-    expect(frame).toContain("backups:0");
+    // Sidebar uses basename only — no full path.
+    expect(frame).toContain(".zshrc");
+    expect(frame).toContain(".bashrc");
+    // Kind appears in detail pane label.
+    expect(frame).toContain("kind: file");
   });
 
   test("renders error state with shared summarizer", async () => {

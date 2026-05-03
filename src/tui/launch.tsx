@@ -9,6 +9,7 @@ import { ServicesProvider } from "../composition/services-context";
 import { routeTree } from "../routeTree.gen";
 import { HelpOverlayProvider } from "../views/components/help-overlay-context";
 import { InputFocusProvider } from "../views/components/input-focus-context";
+import { PanelBindingsProvider } from "../views/components/panel-bindings-context";
 import { BootstrapErrorPanel } from "../views/panels/bootstrap-error-panel";
 import { ThemeProvider } from "../views/theme";
 
@@ -40,7 +41,9 @@ export async function launchTui({ services, actors }: LaunchTuiOptions): Promise
             {outcome.ok ? (
               <HelpOverlayProvider>
                 <InputFocusProvider>
-                  <RouterProvider router={router} />
+                  <PanelBindingsProvider>
+                    <RouterProvider router={router} />
+                  </PanelBindingsProvider>
                 </InputFocusProvider>
               </HelpOverlayProvider>
             ) : (

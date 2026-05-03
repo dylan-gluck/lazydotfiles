@@ -5,9 +5,14 @@ import type { UseTrackedPanel } from "../../controllers/track.controller";
 import type { TrackedFile } from "../../domain/tracked-file";
 import { ConfirmModal } from "../components/confirm-modal";
 import { useInputFocusEffect } from "../components/input-focus-context";
+import {
+  type PanelBinding,
+  usePublishPanelBindings,
+} from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
-import { tildify } from "../lib/truncate-path";
+import { tildify, truncateToWidth } from "../lib/truncate-path";
+import { basename } from "node:path";
 import { useTheme } from "../theme";
 
 export interface TrackedPanelProps {
@@ -35,7 +40,12 @@ function formatBackupDestination(
   return `${tild}/${idShort}/<timestamp>-remove`;
 }
 
-const FOOTER_HINT = "[j/k] move · [enter] log · [u] untrack · [b] toggle backups · [4] discover";
+const BINDINGS: readonly PanelBinding[] = [
+  { keys: "j/k", description: "move" },
+  { keys: "enter", description: "log" },
+  { keys: "u", description: "untrack" },
+  { keys: "b", description: "backups" },
+];
 
 export function TrackedPanel({
   model,
@@ -44,6 +54,7 @@ export function TrackedPanel({
   onViewLog,
 }: TrackedPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelBindings(BINDINGS);
   const [focusIdx, setFocusIdx] = useState(0);
   const [showBackups, setShowBackups] = useState(false);
   const [pendingRemove, setPendingRemove] = useState<TrackedFile | null>(null);
@@ -114,37 +125,43 @@ export function TrackedPanel({
     );
   }
 
+  const homeDir = home ?? "";
+  const SIDEBAR_NAME_MAX = 18;
+  const DETAIL_PATH_MAX = 80;
+
   return (
     <box flexDirection="column" flexGrow={1}>
-      <box flexDirection="row" flexGrow={1} gap={t.space.sm}>
-        <box flexBasis={42} flexShrink={0} flexDirection="column">
+      <box flexDirection="row" flexGrow={1} gap={t.space.sm} overflow="hidden">
+        <box flexGrow={1} flexBasis={0} flexShrink={1} flexDirection="column" overflow="hidden">
           {model.tracked.map((tf, idx) => {
             const isFocused = idx === focusIdx;
             const count = model.backups.get(tf.id)?.length ?? 0;
+            const cursor = isFocused ? "›" : " ";
+            const name = truncateToWidth(basename(tf.target), SIDEBAR_NAME_MAX);
+            // Sidebar shows only name + age + backup-count badge; kind goes to detail.
+            const bk = count > 0 ? ` bk:${count}` : "";
+            const line = `${cursor} ${name} ${relativeAge(tf.addedAt)}${bk}`;
             return (
-              <box key={tf.id} flexDirection="row" gap={t.space.sm}>
-                <text fg={isFocused ? t.fg.accent : t.fg.default}>
-                  {isFocused ? "› " : "  "}
-                  {tf.target}
-                </text>
-                <text fg={t.fg.dim}>{tf.kind}</text>
-                <text fg={t.fg.dim}>{relativeAge(tf.addedAt)}</text>
-                <text fg={t.fg.dim}>backups:{count}</text>
-              </box>
+              <text key={tf.id} fg={isFocused ? t.fg.focus : t.fg.default}>
+                {line}
+              </text>
             );
           })}
         </box>
-        <box flexGrow={1} flexDirection="column">
+        <box flexGrow={2} flexBasis={0} flexDirection="column" overflow="hidden">
           {focused === undefined ? (
             <text fg={t.fg.dim}>(no selection)</text>
           ) : showBackups ? (
             <>
-              <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
-                Backups for {focused.target}
+              <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
+                {truncateToWidth(`Backups for ${tildify(focused.target, homeDir)}`, DETAIL_PATH_MAX)}
               </text>
               {(model.backups.get(focused.id) ?? []).map((b) => (
                 <text key={b.id} fg={t.fg.dim}>
-                  {b.createdAt} · {b.trigger} · {b.snapshotPath}
+                  {truncateToWidth(
+                    `${relativeAge(b.createdAt)} · ${b.trigger} · ${tildify(b.snapshotPath, homeDir)}`,
+                    DETAIL_PATH_MAX,
+                  )}
                 </text>
               ))}
               {(model.backups.get(focused.id) ?? []).length === 0 ? (
@@ -153,30 +170,25 @@ export function TrackedPanel({
             </>
           ) : (
             <>
-              <text fg={t.fg.accent} attributes={TextAttributes.BOLD}>
-                {focused.target}
+              <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
+                {truncateToWidth(tildify(focused.target, homeDir), DETAIL_PATH_MAX)}
               </text>
-              <text fg={t.fg.dim}>source: {focused.source}</text>
+              <text fg={t.fg.dim}>
+                {truncateToWidth(`source: ${tildify(focused.source, homeDir)}`, DETAIL_PATH_MAX)}
+              </text>
               <text fg={t.fg.dim}>kind: {focused.kind}</text>
-              <text fg={t.fg.dim}>added: {focused.addedAt}</text>
+              <text fg={t.fg.dim}>added: {relativeAge(focused.addedAt)}</text>
               <text fg={t.fg.dim}>status: {focused.status}</text>
             </>
           )}
         </box>
       </box>
-      <box
-        height={1}
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
         <text fg={t.fg.dim}>
           {model.inFlight !== null
             ? `${model.inFlight.kind === "add" ? "tracking" : "untracking"}…`
             : `${model.tracked.length} tracked`}
         </text>
-        <text fg={t.fg.dim}>{FOOTER_HINT}</text>
       </box>
       {pendingRemove !== null ? (
         <ConfirmModal

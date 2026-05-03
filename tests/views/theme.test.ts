@@ -8,7 +8,7 @@ describe("theme tokens", () => {
   });
 
   test("space scale matches design", () => {
-    expect(dark.space).toEqual({ xs: 0, sm: 1, md: 2, lg: 4 });
+    expect(dark.space).toEqual({ sm: 1, md: 2, lg: 4 });
   });
 
   test("borders are flexbox-friendly enums, not hand-rolled", () => {
