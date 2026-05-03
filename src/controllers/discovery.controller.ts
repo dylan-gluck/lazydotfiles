@@ -6,7 +6,7 @@ import {
   type DiscoveryState,
 } from "../actors/discovery.actor";
 import { useActor } from "../actors/use-actor";
-import type { DiscoveryCandidate } from "../domain/candidate";
+import type { CandidateStatus, DiscoveryCandidate } from "../domain/candidate";
 import type { ServiceError } from "../services/types";
 
 export interface UseDiscoveryPanel {
@@ -24,6 +24,10 @@ export interface UseDiscoveryPanel {
   accept(id: string): void;
   reject(id: string): void;
   defer(id: string): void;
+  acceptMany(ids: readonly string[]): void;
+  deferMany(ids: readonly string[]): void;
+  rejectMany(ids: readonly string[]): void;
+  restore(entries: ReadonlyArray<{ id: string; status: CandidateStatus }>): void;
   expand(path: string, depth?: number): void;
 }
 
@@ -42,6 +46,29 @@ export function useDiscoveryPanel(): UseDiscoveryPanel {
   const accept = useCallback((id: string) => send({ kind: "accept", payload: { id } }), [send]);
   const reject = useCallback((id: string) => send({ kind: "reject", payload: { id } }), [send]);
   const defer = useCallback((id: string) => send({ kind: "defer", payload: { id } }), [send]);
+  const acceptMany = useCallback(
+    (ids: readonly string[]) => {
+      for (const id of ids) send({ kind: "accept", payload: { id } });
+    },
+    [send],
+  );
+  const deferMany = useCallback(
+    (ids: readonly string[]) => {
+      for (const id of ids) send({ kind: "defer", payload: { id } });
+    },
+    [send],
+  );
+  const rejectMany = useCallback(
+    (ids: readonly string[]) => {
+      for (const id of ids) send({ kind: "reject", payload: { id } });
+    },
+    [send],
+  );
+  const restore = useCallback(
+    (entries: ReadonlyArray<{ id: string; status: CandidateStatus }>) =>
+      send({ kind: "restoreStatuses", payload: { entries } }),
+    [send],
+  );
   const expand = useCallback(
     (path: string, depth?: number) => send({ kind: "expand", payload: { path, depth } }),
     [send],
@@ -57,6 +84,10 @@ export function useDiscoveryPanel(): UseDiscoveryPanel {
     accept,
     reject,
     defer,
+    acceptMany,
+    deferMany,
+    rejectMany,
+    restore,
     expand,
   };
 }

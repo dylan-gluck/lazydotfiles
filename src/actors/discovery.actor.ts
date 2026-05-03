@@ -1,4 +1,4 @@
-import type { DiscoveryCandidate } from "../domain/candidate";
+import type { CandidateStatus, DiscoveryCandidate } from "../domain/candidate";
 import type { Services } from "../composition/services";
 import type { ServiceError } from "../services/types";
 import type { ActorRuntime } from "./runtime";
@@ -22,7 +22,8 @@ export type DiscoveryMessage =
   | Message<"expandFailed", { error: ServiceError }>
   | Message<"accept", { id: string }>
   | Message<"reject", { id: string }>
-  | Message<"defer", { id: string }>;
+  | Message<"defer", { id: string }>
+  | Message<"restoreStatuses", { entries: ReadonlyArray<{ id: string; status: CandidateStatus }> }>;
 
 export type DiscoveryEvent =
   | Event<"scanProgress", { status: ScanStatus }>
@@ -161,6 +162,17 @@ export const discoveryReducer: Reducer<
         events: [{ kind: "candidateDecided", payload: { id: msg.payload.id, decision: "defer" } }],
         effects: [],
       };
+    }
+    case "restoreStatuses": {
+      const targets = new Map(msg.payload.entries.map((e) => [e.id, e.status]));
+      let changed = false;
+      const queue = state.queue.map((c) => {
+        const next = targets.get(c.id);
+        if (next === undefined || next === c.status) return c;
+        changed = true;
+        return { ...c, status: next };
+      });
+      return changed ? { state: { ...state, queue }, events: [], effects: [] } : { state, events: [], effects: [] };
     }
   }
 };

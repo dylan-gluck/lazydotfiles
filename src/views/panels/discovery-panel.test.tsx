@@ -25,17 +25,24 @@ function model(overrides: Partial<UseDiscoveryPanel> = {}): UseDiscoveryPanel {
     accept: noop,
     reject: noop,
     defer: noop,
+    acceptMany: noop,
+    deferMany: noop,
+    rejectMany: noop,
+    restore: noop,
     expand: noop,
     ...overrides,
   };
 }
 
-async function render(m: UseDiscoveryPanel): Promise<string> {
+async function render(
+  m: UseDiscoveryPanel,
+  size: { width: number; height: number } = { width: 80, height: 24 },
+): Promise<string> {
   const result = await renderToFrame(
     <ThemeProvider mode="dark">
-      <DiscoveryPanel model={m} />
+      <DiscoveryPanel model={m} home="/h" />
     </ThemeProvider>,
-    { width: 80, height: 24 },
+    size,
   );
   testSetup = result.setup;
   return result.frame;
@@ -44,10 +51,21 @@ async function render(m: UseDiscoveryPanel): Promise<string> {
 describe("DiscoveryPanel", () => {
   test("renders empty state when queue is empty", async () => {
     const frame = await render(model());
-    expect(frame).toContain("No candidates");
+    expect(frame).toContain("No candidates yet");
   });
 
-  test("renders sidebar entries grouped by parent dir", async () => {
+  test("renders 'all caught up' when no pending remain but accepted exist", async () => {
+    const c = makeCandidate({ path: "/h/.zshrc", kind: "file", reason: "include" });
+    const frame = await render(
+      model({
+        queue: [{ ...c, status: "accepted" }],
+        counts: { pending: 0, accepted: 1, rejected: 0, deferred: 0 },
+      }),
+    );
+    expect(frame).toContain("All caught up");
+  });
+
+  test("renders top-level dirs collapsed with aggregated counts", async () => {
     const c1 = makeCandidate({
       path: "/h/.config/fish/config.fish",
       kind: "file",
@@ -65,10 +83,17 @@ describe("DiscoveryPanel", () => {
         counts: { pending: 3, accepted: 0, rejected: 0, deferred: 0 },
       }),
     );
-    expect(frame).toContain("config.fish");
-    expect(frame).toContain("greet.fish");
+    // Top-level dir name visible.
+    expect(frame).toContain(".config");
+    // Direct top-level file visible inline (no triangle).
     expect(frame).toContain(".zshrc");
-    expect(frame).toContain("/h/.config/fish");
+    // Aggregated count includes all descendants (2 under .config).
+    expect(frame).toContain("2 pending");
+    // Subdir names NOT shown when parent is collapsed.
+    expect(frame).not.toContain("fish");
+    expect(frame).not.toContain("greet.fish");
+    // Header shows totals.
+    expect(frame).toContain("3 candidates");
   });
 
   test("renders scanning indicator", async () => {
@@ -88,5 +113,31 @@ describe("DiscoveryPanel", () => {
     );
     expect(frame).toContain("Discovery failed");
     expect(frame).toContain("boom");
+  });
+
+  test("hides deeply nested paths until parent is expanded", async () => {
+    const deep = makeCandidate({
+      path: "/h/.config/some/deeply/nested/dir/config.toml",
+      kind: "file",
+      reason: "include",
+    });
+    const frame = await render(
+      model({
+        queue: [deep],
+        counts: { pending: 1, accepted: 0, rejected: 0, deferred: 0 },
+      }),
+      { width: 80, height: 24 },
+    );
+    // Only the top-level dir is visible by default.
+    expect(frame).toContain(".config");
+    // Aggregate count from the single descendant.
+    expect(frame).toContain("1 pending");
+    // Nested segments hidden until expand.
+    expect(frame).not.toContain("nested");
+    expect(frame).not.toContain("config.toml");
+    // No row exceeds 80 cells.
+    for (const line of frame.split("\n")) {
+      expect(line.replace(/\s+$/, "").length).toBeLessThanOrEqual(80);
+    }
   });
 });
