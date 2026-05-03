@@ -5,6 +5,7 @@ import { AppShell } from "./app-shell";
 import {
   PanelBindingsProvider,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "./panel-bindings-context";
 
 let testSetup: TestSetup | undefined;
@@ -29,15 +30,17 @@ async function render(node: React.ReactNode): Promise<string> {
 }
 
 function PanelStub(props: {
+  readonly label?: string;
   readonly bindings: readonly { keys: string; description: string }[];
   readonly children: React.ReactNode;
 }): React.ReactNode {
+  if (props.label !== undefined) usePublishPanelLabel(props.label);
   usePublishPanelBindings(props.bindings);
   return props.children;
 }
 
 describe("AppShell", () => {
-  test("renders child content, current path, and ? help hint", async () => {
+  test("renders child content, current path, and ? more hint", async () => {
     const frame = await render(
       <AppShell currentPath="/tracked">
         <text>body</text>
@@ -45,12 +48,12 @@ describe("AppShell", () => {
     );
     expect(frame).toContain("body");
     expect(frame).toContain("/tracked");
-    expect(frame).toContain("? help");
+    expect(frame).toContain("? more");
     // No nav-key clutter when the active panel publishes nothing.
     expect(frame).not.toContain("[1] status");
   });
 
-  test("renders panel-published bindings in the footer", async () => {
+  test("renders panel-published bindings inline in the footer", async () => {
     const frame = await render(
       <AppShell currentPath="/discover">
         <PanelStub
@@ -63,10 +66,22 @@ describe("AppShell", () => {
         </PanelStub>
       </AppShell>,
     );
-    expect(frame).toContain("a/A accept");
-    expect(frame).toContain("/ search");
-    expect(frame).toContain("? help");
+    expect(frame).toContain("a/A");
+    expect(frame).toContain("accept");
+    expect(frame).toContain("search");
+    expect(frame).toContain("? more");
     expect(frame).toContain("/discover");
+  });
+
+  test("renders the panel label as a leading chip", async () => {
+    const frame = await render(
+      <AppShell currentPath="/discover">
+        <PanelStub label="discover" bindings={[{ keys: "a", description: "accept" }]}>
+          <text>body</text>
+        </PanelStub>
+      </AppShell>,
+    );
+    expect(frame).toContain("discover");
   });
 
   test("does not render a top header (no title bar)", async () => {

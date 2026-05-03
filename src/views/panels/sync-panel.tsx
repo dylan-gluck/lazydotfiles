@@ -6,6 +6,7 @@ import { INTERVAL_MS } from "../../services/sync.scheduler";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
@@ -34,6 +35,7 @@ function nextAutoSyncIso(model: UseSyncPanel): string | null {
 
 export function SyncPanel({ model }: SyncPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelLabel("sync");
   usePublishPanelBindings(BINDINGS);
   const [conflictIdx, setConflictIdx] = useState(0);
   const inFlight =

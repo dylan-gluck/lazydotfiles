@@ -69,10 +69,7 @@ interface CompiledRules {
   readonly excludes: readonly CompiledRule[];
 }
 
-function compileRules(
-  include: readonly string[],
-  exclude: readonly string[],
-): CompiledRules {
+function compileRules(include: readonly string[], exclude: readonly string[]): CompiledRules {
   const includes: Bun.Glob[] = [];
   for (const p of include) {
     if (p.startsWith("!")) continue;

@@ -1,10 +1,8 @@
 import { TextAttributes } from "@opentui/core";
 import { createRootRoute, Outlet, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { globalKeymap } from "../controllers/keymap";
 import { AppShell } from "../views/components/app-shell";
 import { GlobalKeys } from "../views/components/global-keys";
-import { HelpOverlay } from "../views/components/help-overlay";
 import { useHelpOverlay } from "../views/components/help-overlay-context";
 import { useTheme } from "../views/theme";
 
@@ -58,12 +56,8 @@ function RootLayout() {
   return (
     <>
       <GlobalKeys />
-      <AppShell currentPath={path}>
-        {help.open ? (
-          <HelpOverlay bindings={[...globalKeymap]} onClose={help.close} />
-        ) : (
-          <Outlet key={path} />
-        )}
+      <AppShell currentPath={path} helpOpen={help.open} onCloseHelp={help.close}>
+        <Outlet key={path} />
       </AppShell>
     </>
   );

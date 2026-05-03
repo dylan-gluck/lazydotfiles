@@ -4,6 +4,7 @@ import type { UseStatusPanel } from "../../controllers/status.controller";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { relativeAge } from "../lib/relative-age";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
@@ -27,6 +28,7 @@ const OP_DESC_MAX = 80;
 
 export function StatusPanel({ model, home }: StatusPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelLabel("status");
   usePublishPanelBindings(BINDINGS);
 
   const homeDir = home ?? "";
@@ -59,9 +61,7 @@ export function StatusPanel({ model, home }: StatusPanelProps): ReactNode {
           {repoLabel}
         </text>
         <text fg={t.fg.dim}>{summary}</text>
-        <text fg={model.dirty ? t.fg.danger : t.fg.success}>
-          {model.dirty ? "dirty" : "clean"}
-        </text>
+        <text fg={model.dirty ? t.fg.danger : t.fg.success}>{model.dirty ? "dirty" : "clean"}</text>
       </box>
 
       {/* First-run banner: queue waiting, nothing tracked yet. */}

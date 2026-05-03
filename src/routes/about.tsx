@@ -6,6 +6,7 @@ import { useStatusPanel } from "../controllers/status.controller";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../views/components/panel-bindings-context";
 import { tildify } from "../views/lib/truncate-path";
 import { useTheme } from "../views/theme";
@@ -21,6 +22,7 @@ const BINDINGS: readonly PanelBinding[] = [
 
 function About() {
   const t = useTheme();
+  usePublishPanelLabel("about");
   usePublishPanelBindings(BINDINGS);
   const status = useStatusPanel();
   const config = useActor<ConfigState>(CONFIG_ACTOR_ID);
@@ -42,7 +44,9 @@ function About() {
         <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           Repository
         </text>
-        <text fg={t.fg.muted}>{`path: ${tildify(dotfilesPath, home)}  ·  vcs: ${vcs}  ·  ${status.dirty ? "dirty" : "clean"}`}</text>
+        <text
+          fg={t.fg.muted}
+        >{`path: ${tildify(dotfilesPath, home)}  ·  vcs: ${vcs}  ·  ${status.dirty ? "dirty" : "clean"}`}</text>
         <text fg={t.fg.muted}>
           {`tracked: ${status.trackedCount}  ·  queued: ${status.queueCount}  ·  remote: ${status.sync.remote ?? "(unset)"}`}
         </text>
@@ -56,7 +60,9 @@ function About() {
           Every destructive action saves a snapshot under{" "}
           {backupPath.length > 0 ? tildify(backupPath, home) : "(unset)"}.
         </text>
-        <text fg={t.fg.muted}>Press 6 to open the log, then R to rewind or B to restore a backup.</text>
+        <text fg={t.fg.muted}>
+          Press 6 to open the log, then R to rewind or B to restore a backup.
+        </text>
       </box>
 
       <box flexDirection="column" marginTop={t.space.sm}>

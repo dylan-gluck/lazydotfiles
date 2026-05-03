@@ -50,7 +50,17 @@ function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): Fa
     // The track service captures the head op pre-track and uses
     // `opRestore` as the canonical rollback for the describe/snapshot/new
     // triplet. Return a stable id so the test can assert the rollback path.
-    opLog: async () => ok([{ id: "preTrack", parentId: null, kind: "edit", description: "head", at: "2024-01-01", filesTouched: [] }]),
+    opLog: async () =>
+      ok([
+        {
+          id: "preTrack",
+          parentId: null,
+          kind: "edit",
+          description: "head",
+          at: "2024-01-01",
+          filesTouched: [],
+        },
+      ]),
     log: async () => ok([]),
     opRestore: async ({ opId }) => {
       callsArr.push({ cmd: "opRestore", opId });

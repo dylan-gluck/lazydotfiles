@@ -172,7 +172,9 @@ export const discoveryReducer: Reducer<
         changed = true;
         return { ...c, status: next };
       });
-      return changed ? { state: { ...state, queue }, events: [], effects: [] } : { state, events: [], effects: [] };
+      return changed
+        ? { state: { ...state, queue }, events: [], effects: [] }
+        : { state, events: [], effects: [] };
     }
   }
 };

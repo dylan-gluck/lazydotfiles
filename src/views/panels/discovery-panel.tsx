@@ -10,6 +10,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { shortDir, truncateToWidth } from "../lib/truncate-path";
@@ -178,9 +179,7 @@ function buildRows(root: DirNode, expanded: ReadonlySet<string>): readonly Row[]
     const open = isRoot || expanded.has(node.path);
     if (!open) return;
     // Direct files first (sorted), then subdirs (sorted by name).
-    const files = [...node.files].sort((a, b) =>
-      basename(a.path).localeCompare(basename(b.path)),
-    );
+    const files = [...node.files].sort((a, b) => basename(a.path).localeCompare(basename(b.path)));
     for (const f of files) rows.push({ kind: "file", candidate: f, depth: depth + 1 });
     const subs = [...node.subdirs.values()].sort((a, b) => a.name.localeCompare(b.name));
     for (const sub of subs) visit(sub, depth + 1, false);
@@ -209,6 +208,7 @@ function formatNodeCounts(node: DirNode): string {
 export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode {
   const t = useTheme();
   const homeDir = home ?? process.env["HOME"] ?? "";
+  usePublishPanelLabel("discover");
   usePublishPanelBindings(BINDINGS);
 
   const [filter, setFilter] = useState<StatusFilter>("pending");
@@ -252,8 +252,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
   }, [lastAction]);
 
   const focusedRow: Row | undefined = rows[focusIdx];
-  const focusedNode: DirNode | null =
-    focusedRow?.kind === "dir" ? focusedRow.node : null;
+  const focusedNode: DirNode | null = focusedRow?.kind === "dir" ? focusedRow.node : null;
 
   const recordAction = useCallback(
     (label: string, entries: ReadonlyArray<{ id: string; status: CandidateStatus }>): void => {
@@ -320,19 +319,16 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
     });
   }, []);
 
-  const expandFocused = useCallback(
-    (path: string) => {
-      setExpanded((prev) => {
-        if (prev.has(path)) return prev;
-        const next = new Set(prev);
-        next.add(path);
-        return next;
-      });
-      // After expansion, focus moves down one row to land on the first child.
-      setFocusIdx((i) => i + 1);
-    },
-    [],
-  );
+  const expandFocused = useCallback((path: string) => {
+    setExpanded((prev) => {
+      if (prev.has(path)) return prev;
+      const next = new Set(prev);
+      next.add(path);
+      return next;
+    });
+    // After expansion, focus moves down one row to land on the first child.
+    setFocusIdx((i) => i + 1);
+  }, []);
 
   const collapseToParent = useCallback(() => {
     // Walk back up rows until we hit the parent dir of the current row.
@@ -484,8 +480,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
   const totalAccepted = model.counts.accepted;
   const totalDeferred = model.counts.deferred;
   const totalRejected = model.counts.rejected;
-  const total =
-    totalPending + totalAccepted + totalDeferred + totalRejected;
+  const total = totalPending + totalAccepted + totalDeferred + totalRejected;
 
   const filteredCandidateCount = tree.total;
   const headerLine =
@@ -511,12 +506,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
   return (
     <box flexDirection="column" flexGrow={1}>
       {/* Header */}
-      <box
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      <box flexDirection="row" justifyContent="space-between" paddingLeft={1} paddingRight={1}>
         <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
           /discover
         </text>
@@ -525,12 +515,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
 
       {/* Filter strip — only when searching or non-default filter */}
       {showFilterStrip ? (
-        <box
-          flexDirection="row"
-          paddingLeft={1}
-          paddingRight={1}
-          gap={t.space.md}
-        >
+        <box flexDirection="row" paddingLeft={1} paddingRight={1} gap={t.space.md}>
           <box flexDirection="row" gap={t.space.sm}>
             {chips.map((c) => {
               const active = c.key === filter;
@@ -555,13 +540,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
       ) : null}
 
       {/* Body */}
-      <box
-        flexDirection="column"
-        flexGrow={1}
-        paddingLeft={1}
-        paddingRight={1}
-        overflow="hidden"
-      >
+      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} overflow="hidden">
         {model.status === "scanning" && rows.length === 0 ? (
           <box flexGrow={1} alignItems="center" justifyContent="center">
             <text fg={t.fg.dim}>scanning…</text>
@@ -644,9 +623,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
               ? rows.length - MAX_VISIBLE_ROWS
               : 0;
           if (overflow === 0) return null;
-          return (
-            <text fg={t.fg.dim}>… {overflow} more · scroll with j/k</text>
-          );
+          return <text fg={t.fg.dim}>… {overflow} more · scroll with j/k</text>;
         })()}
       </box>
 
@@ -688,12 +665,7 @@ function ToastRail(props: {
 }): ReactNode {
   const t = useTheme();
   return (
-    <box
-      flexDirection="row"
-      paddingLeft={1}
-      paddingRight={1}
-      justifyContent="space-between"
-    >
+    <box flexDirection="row" paddingLeft={1} paddingRight={1} justifyContent="space-between">
       <text fg={t.fg.success}>
         {props.label} · {props.remaining} pending
       </text>

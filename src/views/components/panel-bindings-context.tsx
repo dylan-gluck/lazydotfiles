@@ -10,24 +10,34 @@ export interface PanelBinding {
 
 interface PanelBindingsController {
   readonly bindings: readonly PanelBinding[];
-  publish(bindings: readonly PanelBinding[]): void;
-  clear(): void;
+  readonly label: string | null;
+  publishBindings(b: readonly PanelBinding[]): void;
+  clearBindings(): void;
+  publishLabel(l: string): void;
+  clearLabel(): void;
 }
 
 const NOOP_CTRL: PanelBindingsController = {
   bindings: [],
-  publish: () => {},
-  clear: () => {},
+  label: null,
+  publishBindings: () => {},
+  clearBindings: () => {},
+  publishLabel: () => {},
+  clearLabel: () => {},
 };
 
 const PanelBindingsContext = createContext<PanelBindingsController>(NOOP_CTRL);
 
 export function PanelBindingsProvider(props: { children: ReactNode }): ReactNode {
   const [bindings, setBindings] = useState<readonly PanelBinding[]>([]);
+  const [label, setLabel] = useState<string | null>(null);
   const ctrl: PanelBindingsController = {
     bindings,
-    publish: (b) => setBindings(b),
-    clear: () => setBindings([]),
+    label,
+    publishBindings: setBindings,
+    clearBindings: () => setBindings([]),
+    publishLabel: setLabel,
+    clearLabel: () => setLabel(null),
   };
   return (
     <PanelBindingsContext.Provider value={ctrl}>{props.children}</PanelBindingsContext.Provider>
@@ -39,6 +49,11 @@ export function useActivePanelBindings(): readonly PanelBinding[] {
   return useContext(PanelBindingsContext).bindings;
 }
 
+/** Read the active panel's chip label — used by the AppShell footer. */
+export function useActivePanelLabel(): string | null {
+  return useContext(PanelBindingsContext).label;
+}
+
 /**
  * Publish a panel's bindings into the AppShell footer for the lifetime of the
  * caller. Pass a stable array (memoize at the call site) to avoid spurious
@@ -46,15 +61,28 @@ export function useActivePanelBindings(): readonly PanelBinding[] {
  */
 export function usePublishPanelBindings(bindings: readonly PanelBinding[]): void {
   const ctrl = useContext(PanelBindingsContext);
-  // Track latest publish call so unmount cleanup only clears bindings we own.
   const ownedRef = useRef<readonly PanelBinding[] | null>(null);
   useEffect(() => {
-    ctrl.publish(bindings);
+    ctrl.publishBindings(bindings);
     ownedRef.current = bindings;
     return () => {
-      // Only clear if we still own the active bindings — otherwise another
-      // panel mounted in our place and already overwrote them.
-      if (ownedRef.current === bindings) ctrl.clear();
+      if (ownedRef.current === bindings) ctrl.clearBindings();
     };
   }, [bindings, ctrl]);
+}
+
+/**
+ * Publish the panel's chip label (e.g. "discover", "tracked") into the
+ * AppShell footer. Same ownership semantics as bindings.
+ */
+export function usePublishPanelLabel(label: string): void {
+  const ctrl = useContext(PanelBindingsContext);
+  const ownedRef = useRef<string | null>(null);
+  useEffect(() => {
+    ctrl.publishLabel(label);
+    ownedRef.current = label;
+    return () => {
+      if (ownedRef.current === label) ctrl.clearLabel();
+    };
+  }, [label, ctrl]);
 }

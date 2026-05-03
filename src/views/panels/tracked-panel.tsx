@@ -8,6 +8,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
@@ -47,13 +48,9 @@ const BINDINGS: readonly PanelBinding[] = [
   { keys: "b", description: "backups" },
 ];
 
-export function TrackedPanel({
-  model,
-  backupRoot,
-  home,
-  onViewLog,
-}: TrackedPanelProps): ReactNode {
+export function TrackedPanel({ model, backupRoot, home, onViewLog }: TrackedPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelLabel("tracked");
   usePublishPanelBindings(BINDINGS);
   const [focusIdx, setFocusIdx] = useState(0);
   const [showBackups, setShowBackups] = useState(false);
@@ -154,7 +151,10 @@ export function TrackedPanel({
           ) : showBackups ? (
             <>
               <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
-                {truncateToWidth(`Backups for ${tildify(focused.target, homeDir)}`, DETAIL_PATH_MAX)}
+                {truncateToWidth(
+                  `Backups for ${tildify(focused.target, homeDir)}`,
+                  DETAIL_PATH_MAX,
+                )}
               </text>
               {(model.backups.get(focused.id) ?? []).map((b) => (
                 <text key={b.id} fg={t.fg.dim}>

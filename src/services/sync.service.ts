@@ -45,7 +45,12 @@ function repoErr(cause: RepoError): ServiceError {
  */
 function isSyncOp(description: string): boolean {
   const d = description.toLowerCase();
-  return d.startsWith("fetch") || d.startsWith("push") || d.includes("git fetch") || d.includes("git push");
+  return (
+    d.startsWith("fetch") ||
+    d.startsWith("push") ||
+    d.includes("git fetch") ||
+    d.includes("git push")
+  );
 }
 
 export function createSyncService(deps: SyncServiceDeps): SyncService {
@@ -76,7 +81,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     const stamped =
       opts.lastSyncAt !== undefined
         ? opts.lastSyncAt
-        : status.value.lastSyncAt ?? (await lastSyncFromOpLog());
+        : (status.value.lastSyncAt ?? (await lastSyncFromOpLog()));
     return ok({
       lastSyncAt: stamped,
       ahead: ahead.value.ahead,

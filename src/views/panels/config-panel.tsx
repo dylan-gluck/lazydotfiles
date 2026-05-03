@@ -7,6 +7,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { useTheme } from "../theme";
@@ -101,6 +102,7 @@ function flatten(sections: readonly Section[]): readonly FlatRow[] {
 
 export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelLabel("config");
   usePublishPanelBindings(BINDINGS);
   const [focusIdx, setFocusIdx] = useState(0);
   const [draft, setDraft] = useState<{ option: string; text: string } | null>(null);

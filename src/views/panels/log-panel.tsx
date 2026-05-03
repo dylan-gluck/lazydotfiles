@@ -8,6 +8,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
@@ -62,6 +63,7 @@ type PendingRestore = { kind: "op" | "backup"; op: OperationView } | null;
 
 export function LogPanel({ model }: LogPanelProps): ReactNode {
   const t = useTheme();
+  usePublishPanelLabel("log");
   usePublishPanelBindings(BINDINGS);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [pending, setPending] = useState<PendingRestore>(null);
@@ -177,10 +179,7 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
               </text>
               {focused.filesTouched.length > 0 ? (
                 <text fg={t.fg.dim}>
-                  {truncateToWidth(
-                    `files: ${focused.filesTouched.join(", ")}`,
-                    DETAIL_LINE_MAX,
-                  )}
+                  {truncateToWidth(`files: ${focused.filesTouched.join(", ")}`, DETAIL_LINE_MAX)}
                 </text>
               ) : (
                 <text fg={t.fg.dim}>files: (none)</text>
