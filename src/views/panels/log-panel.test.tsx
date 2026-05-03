@@ -3,7 +3,7 @@ import type { UseLogPanel } from "../../controllers/log.controller";
 import type { OperationView } from "../../domain/repo";
 import { destroyTestSetup, renderToFrame, type TestSetup } from "../test-utils";
 import { ThemeProvider } from "../theme";
-import { LogPanel } from "./log-panel";
+import { describeOp, LogPanel } from "./log-panel";
 
 let testSetup: TestSetup | undefined;
 
@@ -92,5 +92,26 @@ describe("LogPanel", () => {
   test("restoring footer reflects actor state", async () => {
     const frame = await render(model({ restoring: { kind: "op" } }));
     expect(frame).toContain("restoring (op)");
+  });
+});
+
+describe("describeOp", () => {
+  test("uses the description when present", () => {
+    const label = describeOp(op({ description: "track .zshrc" }));
+    expect(label).toContain("track .zshrc");
+    expect(label).toContain("abc12345");
+  });
+
+  test("falls back to kind + short hash + age when description is empty", () => {
+    const label = describeOp(op({ description: "" }));
+    expect(label).not.toContain("()");
+    expect(label).toContain("track");
+    expect(label).toContain("abc12345");
+  });
+
+  test("trims whitespace-only descriptions to the fallback", () => {
+    const label = describeOp(op({ description: "   " }));
+    expect(label).not.toContain("()");
+    expect(label).toContain("abc12345");
   });
 });

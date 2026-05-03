@@ -7,16 +7,42 @@ import { ConfirmModal } from "../components/confirm-modal";
 import { useInputFocusEffect } from "../components/input-focus-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
+import { tildify } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 
 export interface TrackedPanelProps {
   readonly model: UseTrackedPanel;
+  /** Configured backup root (e.g. `$HOME/.dotfiles.bak`). */
+  readonly backupRoot?: string;
+  /** Home dir used to tildify display paths in the modal. */
+  readonly home?: string;
   onViewLog?(target: string): void;
+}
+
+/**
+ * Concrete destination preview for the untrack confirm modal. Combines the
+ * configured backup root, the file's identifier prefix, and a literal
+ * timestamp marker so the user sees a real, predictable path.
+ */
+function formatBackupDestination(
+  backupRoot: string | undefined,
+  home: string | undefined,
+  trackedFileId: string,
+): string {
+  const root = backupRoot && backupRoot.length > 0 ? backupRoot : "<unset backup root>";
+  const tild = home === undefined ? root : tildify(root, home);
+  const idShort = trackedFileId.slice(0, 12);
+  return `${tild}/${idShort}/<timestamp>-remove`;
 }
 
 const FOOTER_HINT = "[j/k] move · [enter] log · [u] untrack · [b] toggle backups · [4] discover";
 
-export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode {
+export function TrackedPanel({
+  model,
+  backupRoot,
+  home,
+  onViewLog,
+}: TrackedPanelProps): ReactNode {
   const t = useTheme();
   const [focusIdx, setFocusIdx] = useState(0);
   const [showBackups, setShowBackups] = useState(false);
@@ -32,6 +58,11 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
 
   useKeyboard((event) => {
     if (pendingRemove !== null) return; // modal owns input
+    if (model.error !== null) {
+      // Any key dismisses the error overlay.
+      model.clearError();
+      return;
+    }
     switch (event.name) {
       case "j":
       case "down":
@@ -69,7 +100,7 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
             Tracked panel error
           </text>
           <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-          <text fg={t.fg.dim}>(any key) dismiss not yet wired</text>
+          <text fg={t.fg.dim}>Press any key to dismiss.</text>
         </box>
       </box>
     );
@@ -150,9 +181,10 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
       {pendingRemove !== null ? (
         <ConfirmModal
           title="Untrack file"
-          summary={`Untrack ${pendingRemove.target}?`}
+          summary={`Untrack ${pendingRemove.target}? The symlink is replaced with the file at its current dotfiles content; jj history is preserved.`}
           paths={[pendingRemove.target, pendingRemove.source]}
-          backupDestination={`<backupRoot>/${pendingRemove.id}/...-remove`}
+          backupDestination={formatBackupDestination(backupRoot, home, pendingRemove.id)}
+          confirmLabel="Untrack"
           onConfirm={() => {
             model.remove(pendingRemove.target);
             setPendingRemove(null);

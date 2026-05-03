@@ -22,13 +22,14 @@ async function render(node: ReturnType<typeof ConfirmModal>): Promise<string> {
 }
 
 describe("ConfirmModal", () => {
-  test("renders title, summary, paths, backupDestination", async () => {
+  test("renders title, summary, paths, backupDestination, verb confirm label", async () => {
     const frame = await render(
       <ConfirmModal
         title="Untrack file"
         summary="Untrack /h/.zshrc?"
         paths={["/h/.zshrc", "/d/.zshrc"]}
-        backupDestination="/b/abc/...-remove"
+        backupDestination="~/.dotfiles.bak/abc/<timestamp>-remove"
+        confirmLabel="Untrack"
         onConfirm={noop}
         onCancel={noop}
       />,
@@ -38,17 +39,19 @@ describe("ConfirmModal", () => {
     expect(frame).toContain("/h/.zshrc");
     expect(frame).toContain("/d/.zshrc");
     expect(frame).toContain("backup");
-    expect(frame).toContain("/b/abc/...-remove");
-    expect(frame).toContain("Confirm");
+    expect(frame).toContain("~/.dotfiles.bak/abc/<timestamp>-remove");
+    // Verb label, not the generic word "Confirm".
+    expect(frame).toContain("[Untrack]");
     expect(frame).toContain("Cancel");
   });
 
   test("omits backup line when destination undefined", async () => {
     const frame = await render(
       <ConfirmModal
-        title="Confirm"
+        title="Reject"
         summary="Sure?"
         paths={["/x"]}
+        confirmLabel="Reject"
         onConfirm={noop}
         onCancel={noop}
       />,

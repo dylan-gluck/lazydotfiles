@@ -35,6 +35,18 @@ function shortId(id: string): string {
   return id.slice(0, 8);
 }
 
+/**
+ * Human label for an operation, used in confirm-modal copy. Falls back to the
+ * kind + short hash when `jj` returned no description, so we never produce
+ * empty parentheses like `Rewind to operation X ()?`.
+ */
+export function describeOp(op: OperationView): string {
+  const desc = op.description.trim();
+  const id = shortId(op.opId);
+  if (desc.length > 0) return `“${desc}” (${op.kind} · ${id})`;
+  return `${op.kind} · ${id} · ${relativeAge(op.at)}`;
+}
+
 type PendingRestore = { kind: "op" | "backup"; op: OperationView } | null;
 
 export function LogPanel({ model }: LogPanelProps): ReactNode {
@@ -178,16 +190,17 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
       {pending !== null
         ? (() => {
             const isOp = pending.kind === "op";
+            const opLabel = describeOp(pending.op);
             return (
               <ConfirmModal
                 title={isOp ? "Restore working copy" : "Restore from backup"}
                 summary={
                   isOp
-                    ? `Rewind to operation ${shortId(pending.op.opId)} (${pending.op.description})?`
-                    : `Restore the most recent backup before ${shortId(pending.op.opId)}?`
+                    ? `Rewind to ${opLabel}? Symlinks will be re-materialized to match this point in history.`
+                    : `Restore the most recent backup taken before ${opLabel}? The on-disk file is replaced with the snapshot's content.`
                 }
                 paths={pending.op.filesTouched}
-                confirmLabel="Restore"
+                confirmLabel={isOp ? "Rewind" : "Restore"}
                 onConfirm={() => {
                   if (pending.kind === "op") model.restoreToOp(pending.op.opId);
                   else model.restoreFromLatestBackup(pending.op.opId);

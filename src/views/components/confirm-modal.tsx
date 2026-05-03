@@ -8,7 +8,8 @@ export interface ConfirmModalProps {
   readonly summary: string;
   readonly paths: readonly string[];
   readonly backupDestination?: string;
-  readonly confirmLabel?: string;
+  /** Verb naming the destructive action, e.g. "Untrack", "Rewind". Required. */
+  readonly confirmLabel: string;
   readonly cancelLabel?: string;
   onConfirm(): void;
   onCancel(): void;
@@ -28,7 +29,7 @@ export function ConfirmModal(props: ConfirmModalProps): ReactNode {
         return;
     }
   });
-  const confirmLabel = props.confirmLabel ?? "Confirm";
+  const confirmLabel = props.confirmLabel;
   const cancelLabel = props.cancelLabel ?? "Cancel";
   return (
     <box
