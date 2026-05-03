@@ -1,5 +1,10 @@
 import type { Actor, Effect, Event, Message, Reducer } from "./types";
 
+export interface EffectFailure {
+  readonly actorId: string;
+  readonly cause: unknown;
+}
+
 export interface ActorRuntime<Services> {
   spawn<S, M extends Message, E extends Event>(spec: {
     id: string;
@@ -8,6 +13,12 @@ export interface ActorRuntime<Services> {
   }): Actor<S, M, E>;
   get<S, M extends Message = Message, E extends Event = Event>(id: string): Actor<S, M, E>;
   on<E extends Event>(kind: E["kind"], listener: (event: E) => void): () => void;
+  /**
+   * Subscribe to effect failures. Effects MUST surface failures via reply
+   * messages; a thrown error is a contract violation, surfaced here so a
+   * logger/diagnostics actor can react.
+   */
+  onEffectFailure(listener: (failure: EffectFailure) => void): () => void;
   dispose(): void;
 }
 
@@ -17,6 +28,7 @@ type Listener<S, E extends Event> = (state: S, event: E | null) => void;
 export function createActorRuntime<Services>(deps: { services: Services }): ActorRuntime<Services> {
   const actors = new Map<string, AnyActor>();
   const bus = new Map<string, Set<(event: Event) => void>>();
+  const failureListeners = new Set<(failure: EffectFailure) => void>();
   let disposed = false;
 
   function emit(event: Event): void {
@@ -74,9 +86,18 @@ export function createActorRuntime<Services>(deps: { services: Services }): Acto
       try {
         const reply = await eff(deps.services);
         if (reply !== null && !disposed) actor.send(reply);
-      } catch {
+      } catch (cause) {
         // Effects MUST surface failures via reply messages, not throws.
-        // Swallowed here to keep the runtime alive; a future logger actor handles diagnostics.
+        // The runtime stays alive, but the failure is broadcast so a logger
+        // (or test harness) can observe it instead of disappearing silently.
+        if (disposed) return;
+        for (const fn of failureListeners) {
+          try {
+            fn({ actorId: spec.id, cause });
+          } catch {
+            // a failing failure listener cannot itself crash the runtime
+          }
+        }
       }
     }
 
@@ -123,12 +144,20 @@ export function createActorRuntime<Services>(deps: { services: Services }): Acto
     };
   }
 
+  function onEffectFailure(listener: (failure: EffectFailure) => void): () => void {
+    failureListeners.add(listener);
+    return () => {
+      failureListeners.delete(listener);
+    };
+  }
+
   function dispose(): void {
     if (disposed) return;
     disposed = true;
     bus.clear();
+    failureListeners.clear();
     actors.clear();
   }
 
-  return { spawn, get, on, dispose };
+  return { spawn, get, on, onEffectFailure, dispose };
 }

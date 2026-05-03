@@ -5,6 +5,8 @@ export interface KeymapContext {
   readonly router: ReturnType<typeof useRouter>;
   readonly renderer: { destroy(): void };
   readonly ui: { toggleHelp(): void };
+  /** True when a panel is actively consuming text input (editor, draft, …). */
+  readonly inputActive: boolean;
 }
 
 export interface Binding {
@@ -14,10 +16,13 @@ export interface Binding {
   readonly run: (ctx: KeymapContext) => void;
 }
 
+const whenIdle = (ctx: KeymapContext): boolean => !ctx.inputActive;
+
 export const globalKeymap: readonly Binding[] = [
   {
     keys: ["1"],
     description: "Status",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/" });
     },
@@ -25,6 +30,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["2"],
     description: "About",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/about" });
     },
@@ -32,6 +38,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["3"],
     description: "Config",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/config" });
     },
@@ -39,6 +46,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["4"],
     description: "Discover",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/discover" });
     },
@@ -46,6 +54,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["5"],
     description: "Tracked",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/tracked" });
     },
@@ -53,6 +62,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["6"],
     description: "Log",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/log" });
     },
@@ -60,6 +70,7 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["7"],
     description: "Sync",
+    when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/sync" });
     },
@@ -67,11 +78,13 @@ export const globalKeymap: readonly Binding[] = [
   {
     keys: ["?"],
     description: "Help",
+    when: whenIdle,
     run: ({ ui }) => ui.toggleHelp(),
   },
   {
     keys: ["q"],
     description: "Quit",
+    when: whenIdle,
     run: ({ renderer }) => renderer.destroy(),
   },
 ];

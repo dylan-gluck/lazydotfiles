@@ -3,6 +3,7 @@ import { useKeyboard } from "@opentui/react";
 import { type ReactNode, useState } from "react";
 import type { UseConfigPanel } from "../../controllers/config.controller";
 import type { Config } from "../../domain/config";
+import { useInputFocusEffect } from "../components/input-focus-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { useTheme } from "../theme";
 
@@ -92,6 +93,7 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
   const t = useTheme();
   const [focusIdx, setFocusIdx] = useState(0);
   const [draft, setDraft] = useState<{ option: string; text: string } | null>(null);
+  useInputFocusEffect(draft !== null);
 
   if (model.status === "loading" && model.config === null) {
     return (

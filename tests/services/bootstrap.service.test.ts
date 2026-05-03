@@ -9,8 +9,7 @@ import { createJjRepository } from "../../src/repositories/jj.repository";
 import { createBootstrapService } from "../../src/services/bootstrap.service";
 import { createConfigService } from "../../src/services/config.service";
 import { withTmpDir } from "../../src/test-utils/tmp";
-
-const HAS_JJ = Bun.which("jj") !== null;
+import { HAS_JJ } from "../test-utils/jj";
 
 function wireForHome(home: string) {
   const configRepo = createConfigRepository(`${home}/.config/lazydotfiles/config.toml`);

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { wireServices } from "../../src/composition/services";
 import { runCli } from "../../src/cli";
 import { withTmpDir } from "../../src/test-utils/tmp";
+import { HAS_JJ } from "../test-utils/jj";
 
 /**
  * PRD A1: a user with no prior config runs `ldf`, sees the Status view in <500ms.
@@ -13,10 +14,9 @@ import { withTmpDir } from "../../src/test-utils/tmp";
  * (a synchronous React render) keeps the total under budget on the same
  * machine.
  *
- * Gated on the `jj` binary; bootstrap requires it.
+ * Gated on the `jj` binary; bootstrap requires it. In CI (`LDF_REQUIRE_JJ=1`
+ * or `CI=true`), absence of `jj` is a hard failure rather than a silent skip.
  */
-const HAS_JJ = Bun.which("jj") !== null;
-
 const BOOT_BUDGET_MS = 500;
 
 describe.if(HAS_JJ)("A1 boot speed", () => {

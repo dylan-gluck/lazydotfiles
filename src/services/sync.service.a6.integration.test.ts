@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { wireServices } from "../composition/services";
+import { HAS_JJ } from "../test-utils/jj";
 import { withTmpDir } from "../test-utils/tmp";
 
 const HAS_GIT = Bun.which("git") !== null;
-const HAS_JJ = Bun.which("jj") !== null;
 
 async function run(
   cmd: readonly string[],

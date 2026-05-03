@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import type { UseTrackedPanel } from "../../controllers/track.controller";
 import type { TrackedFile } from "../../domain/tracked-file";
 import { ConfirmModal } from "../components/confirm-modal";
+import { useInputFocusEffect } from "../components/input-focus-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
 import { useTheme } from "../theme";
@@ -20,6 +21,8 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
   const [focusIdx, setFocusIdx] = useState(0);
   const [showBackups, setShowBackups] = useState(false);
   const [pendingRemove, setPendingRemove] = useState<TrackedFile | null>(null);
+  // Block global keymap (q quits, digit-nav) while the confirm modal is open.
+  useInputFocusEffect(pendingRemove !== null);
 
   useEffect(() => {
     if (focusIdx >= model.tracked.length) setFocusIdx(0);
@@ -51,22 +54,6 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
         return;
     }
   });
-
-  if (pendingRemove !== null) {
-    return (
-      <ConfirmModal
-        title="Untrack file"
-        summary={`Untrack ${pendingRemove.target}?`}
-        paths={[pendingRemove.target, pendingRemove.source]}
-        backupDestination={`<backupRoot>/${pendingRemove.id}/...-remove`}
-        onConfirm={() => {
-          model.remove(pendingRemove.target);
-          setPendingRemove(null);
-        }}
-        onCancel={() => setPendingRemove(null)}
-      />
-    );
-  }
 
   if (model.error !== null) {
     return (
@@ -160,6 +147,19 @@ export function TrackedPanel({ model, onViewLog }: TrackedPanelProps): ReactNode
         </text>
         <text fg={t.fg.dim}>{FOOTER_HINT}</text>
       </box>
+      {pendingRemove !== null ? (
+        <ConfirmModal
+          title="Untrack file"
+          summary={`Untrack ${pendingRemove.target}?`}
+          paths={[pendingRemove.target, pendingRemove.source]}
+          backupDestination={`<backupRoot>/${pendingRemove.id}/...-remove`}
+          onConfirm={() => {
+            model.remove(pendingRemove.target);
+            setPendingRemove(null);
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
+      ) : null}
     </box>
   );
 }

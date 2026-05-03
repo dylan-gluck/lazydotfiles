@@ -31,7 +31,15 @@ export function ConfirmModal(props: ConfirmModalProps): ReactNode {
   const confirmLabel = props.confirmLabel ?? "Confirm";
   const cancelLabel = props.cancelLabel ?? "Cancel";
   return (
-    <box flexGrow={1} alignItems="center" justifyContent="center" backgroundColor={t.bg.default}>
+    <box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      alignItems="center"
+      justifyContent="center"
+    >
       <box
         backgroundColor={t.bg.elevated}
         borderStyle={t.border.emphasis}

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { trackedFileId } from "../../src/domain/tracked-file";
 import { createJjRepository } from "../../src/repositories/jj.repository";
 import { isSymlink, readSymlinkTarget } from "../../src/test-utils/fs";
+import { HAS_JJ } from "../test-utils/jj";
 import { withE2eHome } from "./harness";
 
 /**
@@ -13,8 +14,6 @@ import { withE2eHome } from "./harness";
  *   - a working symlink at the original location
  *   - a jj change with description `track <relpath>`
  */
-const HAS_JJ = Bun.which("jj") !== null;
-
 describe.if(HAS_JJ)("A3 add round-trip", () => {
   test("ldf add produces backup, source, symlink, and jj track change", async () => {
     await withE2eHome(async ({ home, services, runCli }) => {

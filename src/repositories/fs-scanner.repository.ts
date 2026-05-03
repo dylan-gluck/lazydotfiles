@@ -16,8 +16,37 @@ export interface FsScannerRepository {
   }): Promise<Result<readonly string[], RepoError>>;
 }
 
-/** Directory names that are never scanned regardless of include rules. */
-const HARD_STOP_DIRS = new Set([".git", ".jj", "node_modules"]);
+/**
+ * Directory names that are never scanned regardless of include rules.
+ * Anchored at any depth — so `Library/Caches` and `Project/.cache` are both
+ * skipped via the `.cache`/`Caches` entry. Keep this list focused on dirs
+ * that are large, recreated cheaply, or never meant to be tracked as
+ * dotfiles, so we don't waste a HOME walk on them.
+ */
+const HARD_STOP_DIRS = new Set([
+  ".git",
+  ".jj",
+  "node_modules",
+  "Library",
+  "Applications",
+  ".Trash",
+  ".cache",
+  "Caches",
+  ".npm",
+  ".bun",
+  ".cargo",
+  ".rustup",
+  ".pnpm-store",
+  ".yarn",
+  ".gradle",
+  "Downloads",
+  "Movies",
+  "Pictures",
+  "Music",
+  "Public",
+  "Desktop",
+  "Documents",
+]);
 
 /** True for any pattern that would expand under glob semantics. */
 export function isGlobPattern(pattern: string): boolean {
@@ -35,35 +64,55 @@ function compile(pattern: string): CompiledRule {
   return { negate, glob: new Bun.Glob(body) };
 }
 
+interface CompiledRules {
+  readonly includes: readonly Bun.Glob[];
+  readonly excludes: readonly CompiledRule[];
+}
+
+function compileRules(
+  include: readonly string[],
+  exclude: readonly string[],
+): CompiledRules {
+  const includes: Bun.Glob[] = [];
+  for (const p of include) {
+    if (p.startsWith("!")) continue;
+    includes.push(new Bun.Glob(p));
+  }
+  const excludes = exclude.map(compile);
+  return { includes, excludes };
+}
+
+function classifyCompiled(relPath: string, rules: CompiledRules): "include" | "exclude" {
+  let matched = false;
+  for (const g of rules.includes) {
+    if (g.match(relPath)) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) return "exclude";
+  let state: "include" | "exclude" = "include";
+  for (const rule of rules.excludes) {
+    if (!rule.glob.match(relPath)) continue;
+    state = rule.negate ? "include" : "exclude";
+  }
+  return state;
+}
+
 /**
  * Pure: classify a forward-slash relative path against ordered include/exclude rules.
  * Returns "include" iff some include matches AND, after applying excludes in order,
  * the final state is included. `!pattern` in `exclude` re-includes a previously excluded path.
+ *
+ * For one-shot calls. Hot-path scans should call `compileRules` once and reuse
+ * via `classifyCompiled` to avoid recompiling globs per file.
  */
 export function classifyPath(
   relPath: string,
   include: readonly string[],
   exclude: readonly string[],
 ): "include" | "exclude" {
-  // 1. Must match at least one non-negation include.
-  let matched = false;
-  for (const p of include) {
-    if (p.startsWith("!")) continue;
-    if (new Bun.Glob(p).match(relPath)) {
-      matched = true;
-      break;
-    }
-  }
-  if (!matched) return "exclude";
-
-  // 2. Apply excludes in order. Negation flips the state back to included.
-  let state: "include" | "exclude" = "include";
-  for (const p of exclude) {
-    const rule = compile(p);
-    if (!rule.glob.match(relPath)) continue;
-    state = rule.negate ? "include" : "exclude";
-  }
-  return state;
+  return classifyCompiled(relPath, compileRules(include, exclude));
 }
 
 function toRel(home: string, abs: string): string {
@@ -95,11 +144,12 @@ export function createFsScannerRepository(): FsScannerRepository {
     kind: "FsScannerRepository",
 
     async *scan({ home, include, exclude }) {
+      const rules = compileRules(include, exclude);
       const seen = new Set<string>();
       for await (const entry of walk(home)) {
         if (entry.isDir) continue;
         const rel = toRel(home, entry.path);
-        if (classifyPath(rel, include, exclude) !== "include") continue;
+        if (classifyCompiled(rel, rules) !== "include") continue;
         if (seen.has(entry.path)) continue;
         seen.add(entry.path);
         yield entry.path;

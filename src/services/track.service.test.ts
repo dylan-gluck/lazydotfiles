@@ -20,8 +20,9 @@ import { createBackupService } from "./backup.service";
 import { createTrackService, type TrackService } from "./track.service";
 
 interface JjCall {
-  readonly cmd: "describe" | "snapshot";
+  readonly cmd: "describe" | "snapshot" | "opRestore";
   readonly message?: string;
+  readonly opId?: string;
 }
 
 interface FakeJj extends JjRepository {
@@ -46,9 +47,15 @@ function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): Fa
       return ok(undefined);
     },
     newChange: async () => ok(undefined),
-    opLog: async () => ok([]),
+    // The track service captures the head op pre-track and uses
+    // `opRestore` as the canonical rollback for the describe/snapshot/new
+    // triplet. Return a stable id so the test can assert the rollback path.
+    opLog: async () => ok([{ id: "preTrack", parentId: null, kind: "edit", description: "head", at: "2024-01-01", filesTouched: [] }]),
     log: async () => ok([]),
-    opRestore: async () => ok(undefined),
+    opRestore: async ({ opId }) => {
+      callsArr.push({ cmd: "opRestore", opId });
+      return ok(undefined);
+    },
     logAtOp: async () => ok(null),
     diffSummaryAtOp: async () => ok([]),
     diffAtOp: async () => ok(""),
@@ -288,7 +295,7 @@ describe("TrackService.add — rollback branches", () => {
     expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
   });
 
-  test("A9: record fail → unwound + best-effort empty describe", async () => {
+  test("A9: record fail → unwound + jj op restore replayed", async () => {
     h = await makeHarness({
       trackedFaults: {
         upsert: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
@@ -303,8 +310,12 @@ describe("TrackService.add — rollback branches", () => {
     expect(await fileBytes(target)).toBe("orig");
     expect(await isSymlink(target)).toBe(false);
     expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
-    // Best-effort empty describe occurred.
-    expect(h.jj.calls.filter((c) => c.cmd === "describe").length).toBe(2);
+    // Track only describes once (the real "track" message); the rollback
+    // restores via jj op restore <preTrackOp>, not an empty describe.
+    expect(h.jj.calls.filter((c) => c.cmd === "describe").length).toBe(1);
+    const restores = h.jj.calls.filter((c) => c.cmd === "opRestore");
+    expect(restores.length).toBe(1);
+    expect(restores[0]?.opId).toBe("preTrack");
   });
 });
 

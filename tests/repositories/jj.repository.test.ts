@@ -2,8 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { createJjRepository } from "../../src/repositories/jj.repository";
 import { withTmpDir } from "../../src/test-utils/tmp";
-
-const HAS_JJ = Bun.which("jj") !== null;
+import { HAS_JJ } from "../test-utils/jj";
 
 describe.if(HAS_JJ)("JjRepository — isRepo / initColocated", () => {
   test("isRepo returns false on a non-repo dir", async () => {

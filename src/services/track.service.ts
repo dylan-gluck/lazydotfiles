@@ -70,6 +70,23 @@ function rollback(
 export function createTrackService(deps: TrackServiceDeps): TrackService {
   const nowFn = deps.now ?? (() => new Date());
 
+  async function captureHeadOp(): Promise<string | null> {
+    const ops = await deps.jj.opLog({ root: deps.dotfilesRoot, limit: 1 });
+    if (!ops.ok) return null;
+    return ops.value[0]?.id ?? null;
+  }
+
+  function jjRestoreInverse(headOpId: string | null): InverseStep {
+    return {
+      step: "describe",
+      run: async () => {
+        if (headOpId === null) return ok(undefined);
+        const r = await deps.jj.opRestore({ root: deps.dotfilesRoot, opId: headOpId });
+        return r.ok ? ok(undefined) : err(repoErr(r.error));
+      },
+    };
+  }
+
   async function add(absolutePath: string): Promise<Result<TrackedFile, ServiceError>> {
     const target = absolutePath;
     const id = trackedFileId(target);
@@ -94,6 +111,9 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
       return err({ tag: "InvalidTarget", reason: "under-dotfiles", path: target });
     }
 
+    // Snapshot the current jj head op so we can fully unwind anything jj records
+    // (describe + snapshot + new) on failure.
+    const preTrackOp = await captureHeadOp();
     const inverses: InverseStep[] = [];
 
     // Step 2: snapshot.
@@ -148,7 +168,10 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
       },
     });
 
-    // Step 5: jj describe + snapshot.
+    // Step 5: jj describe + snapshot. Any jj-side failure replays via
+    // `jj op restore <preTrackOp>`, which is the only true inverse for the
+    // describe → snapshot → new triplet.
+    const jjInverse = jjRestoreInverse(preTrackOp);
     const desc = await deps.jj.describe({
       root: deps.dotfilesRoot,
       message: `track ${rel}`,
@@ -156,13 +179,7 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
     if (!desc.ok) {
       return err(rollback("describe", repoErr(desc.error), await runInverse(inverses)));
     }
-    inverses.push({
-      step: "describe",
-      run: async () => {
-        const empty = await deps.jj.describe({ root: deps.dotfilesRoot, message: "" });
-        return empty.ok ? ok(undefined) : err(repoErr(empty.error));
-      },
-    });
+    inverses.push(jjInverse);
     const snapJj = await deps.jj.snapshot({ root: deps.dotfilesRoot });
     if (!snapJj.ok) {
       return err(rollback("describe", repoErr(snapJj.error), await runInverse(inverses)));
@@ -221,6 +238,7 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
       // swallow; default mode 0o644.
     }
 
+    const preTrackOp = await captureHeadOp();
     const inverses: InverseStep[] = [];
 
     // Step 2: snapshot current source.
@@ -284,6 +302,7 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
     });
 
     // Step 6: jj describe + snapshot.
+    const jjInverse = jjRestoreInverse(preTrackOp);
     const desc = await deps.jj.describe({
       root: deps.dotfilesRoot,
       message: `untrack ${rel}`,
@@ -291,13 +310,7 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
     if (!desc.ok) {
       return err(rollback("describe", repoErr(desc.error), await runInverse(inverses)));
     }
-    inverses.push({
-      step: "describe",
-      run: async () => {
-        const empty = await deps.jj.describe({ root: deps.dotfilesRoot, message: "" });
-        return empty.ok ? ok(undefined) : err(repoErr(empty.error));
-      },
-    });
+    inverses.push(jjInverse);
     const snapJj = await deps.jj.snapshot({ root: deps.dotfilesRoot });
     if (!snapJj.ok) {
       return err(rollback("describe", repoErr(snapJj.error), await runInverse(inverses)));

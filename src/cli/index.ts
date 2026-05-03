@@ -56,7 +56,13 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
     return 0;
   }
 
-  // Every code path requires a bootstrapped repo; do it once up front.
+  // The TUI path owns its own bootstrap so it can render `BootstrapErrorPanel`
+  // rather than a stderr line.
+  if (argv.length === 0 && deps.launchTui !== undefined) {
+    return deps.launchTui();
+  }
+
+  // Every CLI subcommand requires a bootstrapped repo; do it once up front.
   const boot = await deps.services.bootstrap.run();
   if (!boot.ok) {
     const { formatServiceError } = await import("../lib/format");
@@ -65,8 +71,8 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
   }
 
   if (argv.length === 0) {
-    if (deps.launchTui === undefined) return 0;
-    return deps.launchTui();
+    // No `launchTui` (e.g. unit tests). Bootstrap succeeded; nothing more to do.
+    return 0;
   }
 
   const [sub, ...rest] = argv;

@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { wireServices } from "../../src/composition/services";
 import { withTmpDir } from "../../src/test-utils/tmp";
-
-const HAS_JJ = Bun.which("jj") !== null;
+import { HAS_JJ } from "../test-utils/jj";
 
 describe.if(HAS_JJ)("wireServices", () => {
   test("bootstrap.run() against a tmp HOME yields expanded paths", async () => {

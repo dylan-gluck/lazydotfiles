@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import type { UseLogPanel } from "../../controllers/log.controller";
 import type { OperationKind, OperationView } from "../../domain/repo";
 import { ConfirmModal } from "../components/confirm-modal";
+import { useInputFocusEffect } from "../components/input-focus-context";
 import { summarizeServiceError } from "../components/summarize-error";
 import { relativeAge } from "../lib/relative-age";
 import { useTheme } from "../theme";
@@ -40,6 +41,7 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
   const t = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
   const [pending, setPending] = useState<PendingRestore>(null);
+  useInputFocusEffect(pending !== null);
 
   const focused = model.operations.find((o) => o.opId === model.focusId);
 
@@ -82,28 +84,6 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
         return;
     }
   });
-
-  if (pending !== null) {
-    const isOp = pending.kind === "op";
-    return (
-      <ConfirmModal
-        title={isOp ? "Restore working copy" : "Restore from backup"}
-        summary={
-          isOp
-            ? `Rewind to operation ${shortId(pending.op.opId)} (${pending.op.description})?`
-            : `Restore the most recent backup before ${shortId(pending.op.opId)}?`
-        }
-        paths={pending.op.filesTouched}
-        confirmLabel="Restore"
-        onConfirm={() => {
-          if (pending.kind === "op") model.restoreToOp(pending.op.opId);
-          else model.restoreFromLatestBackup(pending.op.opId);
-          setPending(null);
-        }}
-        onCancel={() => setPending(null)}
-      />
-    );
-  }
 
   if (model.status === "error" && model.error !== null) {
     return (
@@ -195,6 +175,29 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
         </text>
         <text fg={t.fg.dim}>{FOOTER_HINT}</text>
       </box>
+      {pending !== null
+        ? (() => {
+            const isOp = pending.kind === "op";
+            return (
+              <ConfirmModal
+                title={isOp ? "Restore working copy" : "Restore from backup"}
+                summary={
+                  isOp
+                    ? `Rewind to operation ${shortId(pending.op.opId)} (${pending.op.description})?`
+                    : `Restore the most recent backup before ${shortId(pending.op.opId)}?`
+                }
+                paths={pending.op.filesTouched}
+                confirmLabel="Restore"
+                onConfirm={() => {
+                  if (pending.kind === "op") model.restoreToOp(pending.op.opId);
+                  else model.restoreFromLatestBackup(pending.op.opId);
+                  setPending(null);
+                }}
+                onCancel={() => setPending(null)}
+              />
+            );
+          })()
+        : null}
     </box>
   );
 }
