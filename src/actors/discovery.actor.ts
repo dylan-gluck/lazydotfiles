@@ -1,0 +1,174 @@
+import type { DiscoveryCandidate } from "../domain/candidate";
+import type { Services } from "../composition/services";
+import type { ServiceError } from "../services/types";
+import type { ActorRuntime } from "./runtime";
+import type { Effect, Event, Message, Reducer } from "./types";
+
+export type ScanStatus = "idle" | "scanning" | "ready" | "error";
+
+export interface DiscoveryState {
+  readonly status: ScanStatus;
+  readonly queue: readonly DiscoveryCandidate[];
+  readonly autoTracked: readonly string[];
+  readonly error: ServiceError | null;
+}
+
+export type DiscoveryMessage =
+  | Message<"rescan", undefined>
+  | Message<"scanOk", { queued: readonly DiscoveryCandidate[]; autoTracked: readonly string[] }>
+  | Message<"scanFailed", { error: ServiceError }>
+  | Message<"expand", { path: string; depth?: number }>
+  | Message<"expandOk", { siblings: readonly DiscoveryCandidate[] }>
+  | Message<"expandFailed", { error: ServiceError }>
+  | Message<"accept", { id: string }>
+  | Message<"reject", { id: string }>
+  | Message<"defer", { id: string }>;
+
+export type DiscoveryEvent =
+  | Event<"scanProgress", { status: ScanStatus }>
+  | Event<"candidateAdded", { count: number; reason: "include" | "sibling-of" | "auto" }>
+  | Event<"candidateDecided", { id: string; decision: "accept" | "reject" | "defer" }>;
+
+export const DISCOVERY_ACTOR_ID = "discovery";
+
+export const initialDiscoveryState: DiscoveryState = {
+  status: "idle",
+  queue: [],
+  autoTracked: [],
+  error: null,
+};
+
+const rescanEffect: Effect<DiscoveryMessage, Services> = async ({ config, discovery }) => {
+  const cfg = await config.loadOrInit();
+  if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
+  const r = await discovery.scan(cfg.value);
+  return r.ok
+    ? { kind: "scanOk", payload: { queued: r.value.queued, autoTracked: r.value.autoTracked } }
+    : { kind: "scanFailed", payload: { error: r.error } };
+};
+
+function expandEffect(path: string, depth?: number): Effect<DiscoveryMessage, Services> {
+  return async ({ discovery }) => {
+    const r = await discovery.expandSiblings(path, depth);
+    return r.ok
+      ? { kind: "expandOk", payload: { siblings: r.value } }
+      : { kind: "expandFailed", payload: { error: r.error } };
+  };
+}
+
+function applyDecision(
+  state: DiscoveryState,
+  id: string,
+  next: DiscoveryCandidate["status"],
+): DiscoveryState | null {
+  let changed = false;
+  const queue = state.queue.map((c) => {
+    if (c.id !== id) return c;
+    changed = true;
+    return { ...c, status: next };
+  });
+  return changed ? { ...state, queue } : null;
+}
+
+export const discoveryReducer: Reducer<
+  DiscoveryState,
+  DiscoveryMessage,
+  DiscoveryEvent,
+  Services
+> = (state, msg) => {
+  switch (msg.kind) {
+    case "rescan":
+      return {
+        state: { ...state, status: "scanning", error: null },
+        events: [{ kind: "scanProgress", payload: { status: "scanning" } }],
+        effects: [rescanEffect],
+      };
+    case "scanOk": {
+      const { queued, autoTracked } = msg.payload;
+      const events: DiscoveryEvent[] = [{ kind: "scanProgress", payload: { status: "ready" } }];
+      if (queued.length > 0) {
+        events.push({
+          kind: "candidateAdded",
+          payload: { count: queued.length, reason: "include" },
+        });
+      }
+      if (autoTracked.length > 0) {
+        events.push({
+          kind: "candidateAdded",
+          payload: { count: autoTracked.length, reason: "auto" },
+        });
+      }
+      return {
+        state: { status: "ready", queue: queued, autoTracked, error: null },
+        events,
+        effects: [],
+      };
+    }
+    case "scanFailed":
+      return {
+        state: { ...state, status: "error", error: msg.payload.error },
+        events: [{ kind: "scanProgress", payload: { status: "error" } }],
+        effects: [],
+      };
+    case "expand":
+      return {
+        state,
+        events: [],
+        effects: [expandEffect(msg.payload.path, msg.payload.depth)],
+      };
+    case "expandOk": {
+      const seen = new Set(state.queue.map((c) => c.id));
+      const fresh = msg.payload.siblings.filter((c) => !seen.has(c.id));
+      const events: DiscoveryEvent[] =
+        fresh.length === 0
+          ? []
+          : [{ kind: "candidateAdded", payload: { count: fresh.length, reason: "sibling-of" } }];
+      return {
+        state: { ...state, queue: [...state.queue, ...fresh] },
+        events,
+        effects: [],
+      };
+    }
+    case "expandFailed":
+      return {
+        state: { ...state, error: msg.payload.error },
+        events: [],
+        effects: [],
+      };
+    case "accept": {
+      const next = applyDecision(state, msg.payload.id, "accepted");
+      if (next === null) return { state, events: [], effects: [] };
+      return {
+        state: next,
+        events: [{ kind: "candidateDecided", payload: { id: msg.payload.id, decision: "accept" } }],
+        effects: [],
+      };
+    }
+    case "reject": {
+      const next = applyDecision(state, msg.payload.id, "rejected");
+      if (next === null) return { state, events: [], effects: [] };
+      return {
+        state: next,
+        events: [{ kind: "candidateDecided", payload: { id: msg.payload.id, decision: "reject" } }],
+        effects: [],
+      };
+    }
+    case "defer": {
+      const next = applyDecision(state, msg.payload.id, "deferred");
+      if (next === null) return { state, events: [], effects: [] };
+      return {
+        state: next,
+        events: [{ kind: "candidateDecided", payload: { id: msg.payload.id, decision: "defer" } }],
+        effects: [],
+      };
+    }
+  }
+};
+
+export function spawnDiscoveryActor(runtime: ActorRuntime<Services>): void {
+  runtime.spawn<DiscoveryState, DiscoveryMessage, DiscoveryEvent>({
+    id: DISCOVERY_ACTOR_ID,
+    initial: initialDiscoveryState,
+    reducer: discoveryReducer,
+  });
+}

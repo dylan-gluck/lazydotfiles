@@ -1,33 +1,9 @@
-import { createCliRenderer } from "@opentui/core";
-import { createRoot } from "@opentui/react";
-import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { routeTree } from "./routeTree.gen";
+import { wireActors } from "./composition/actors";
+import { wireServices } from "./composition/services";
+import { launchTui } from "./tui/launch";
 
-// Use memory history since we're in a terminal environment (no browser)
-const memoryHistory = createMemoryHistory({
-  initialEntries: ["/"],
-});
-
-// Create router with the generated route tree
-const router = createRouter({
-  routeTree,
-  history: memoryHistory,
-});
-
-// Register router for type safety
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
-
-// App component that provides the router
-function App() {
-  return <RouterProvider router={router} />;
-}
-
-// Load the router before rendering (required for initial route matching)
-await router.load();
-
-const renderer = await createCliRenderer();
-createRoot(renderer).render(<App />);
+const services = wireServices({ home: process.env["HOME"] ?? "" });
+const actors = wireActors(services);
+const code = await launchTui({ services, actors });
+actors.dispose();
+process.exitCode = code;

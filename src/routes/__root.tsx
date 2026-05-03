@@ -1,6 +1,12 @@
-import { type KeyEvent, TextAttributes } from "@opentui/core";
-import { useKeyboard, useRenderer } from "@opentui/react";
-import { createRootRoute, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
+import { TextAttributes } from "@opentui/core";
+import { createRootRoute, Outlet, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { globalKeymap } from "../controllers/keymap";
+import { AppShell } from "../views/components/app-shell";
+import { GlobalKeys } from "../views/components/global-keys";
+import { HelpOverlay } from "../views/components/help-overlay";
+import { useHelpOverlay } from "../views/components/help-overlay-context";
+import { useTheme } from "../views/theme";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -8,92 +14,57 @@ export const Route = createRootRoute({
 });
 
 function NotFound() {
+  const t = useTheme();
   return (
     <box alignItems="center" justifyContent="center" flexGrow={1}>
       <box flexDirection="column" alignItems="center">
-        <text fg="red" attributes={TextAttributes.BOLD}>
+        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
           Screen Not Found
         </text>
-        <text attributes={TextAttributes.DIM}>Press [1] to go back to the home screen</text>
+        <text fg={t.fg.dim}>Press [1] to go to status</text>
       </box>
     </box>
   );
 }
 
-// Root layout component with navigation
+/**
+ * Bridges TanStack Router's history into the OpenTUI React reconciler.
+ *
+ * The router's internal `Transitioner` relies on `useSyncExternalStore`
+ * subscriptions to drive `router.load()` and to re-render `<Outlet />` after
+ * a navigation. In the OpenTUI React reconciler, those out-of-React store
+ * notifications do not reliably re-render — so navigation mutates history
+ * without ever swapping the rendered route.
+ *
+ * We bridge it manually:
+ *   1. subscribe to `router.history` (sync, fires inside `router.navigate`),
+ *   2. drive `router.load()` ourselves (what `Transitioner` would do),
+ *   3. bump local state so React schedules a real re-render,
+ *   4. key `<Outlet />` by pathname so it remounts and re-resolves matches.
+ */
 function RootLayout() {
   const router = useRouter();
-  const renderer = useRenderer();
-  const routerState = useRouterState();
-  const currentPath = routerState.location.pathname;
-
-  // Handle keyboard navigation
-  useKeyboard((event: KeyEvent) => {
-    if (event.name === "1") router.navigate({ to: "/" });
-    if (event.name === "2") router.navigate({ to: "/about" });
-    if (event.name === "3") router.navigate({ to: "/settings" });
-    if (event.name === "q") renderer.destroy();
-  });
-
+  const [, bumpTick] = useState(0);
+  const [path, setPath] = useState(router.state.location.pathname);
+  useEffect(() => {
+    return router.history.subscribe(() => {
+      router.load().finally(() => {
+        setPath(router.state.location.pathname);
+        bumpTick((t) => t + 1);
+      });
+    });
+  }, [router]);
+  const help = useHelpOverlay();
   return (
-    <box flexDirection="column" flexGrow={1}>
-      {/* Header */}
-      <box
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-        borderStyle="single"
-        border={["bottom"]}
-      >
-        <text attributes={TextAttributes.BOLD}>TanStack Router File-Based Demo</text>
-        <text attributes={TextAttributes.DIM}>Current: {currentPath}</text>
-      </box>
-
-      {/* Main content area */}
-      <box flexGrow={1} padding={1}>
-        <Outlet />
-      </box>
-
-      {/* Footer navigation */}
-      <box
-        flexDirection="row"
-        justifyContent="center"
-        gap={2}
-        paddingTop={1}
-        paddingBottom={1}
-        borderStyle="single"
-        border={["top"]}
-      >
-        <text
-          attributes={
-            currentPath === "/"
-              ? TextAttributes.BOLD | TextAttributes.UNDERLINE
-              : TextAttributes.NONE
-          }
-        >
-          [1] Home
-        </text>
-        <text
-          attributes={
-            currentPath === "/about"
-              ? TextAttributes.BOLD | TextAttributes.UNDERLINE
-              : TextAttributes.NONE
-          }
-        >
-          [2] About
-        </text>
-        <text
-          attributes={
-            currentPath === "/settings"
-              ? TextAttributes.BOLD | TextAttributes.UNDERLINE
-              : TextAttributes.NONE
-          }
-        >
-          [3] Settings
-        </text>
-        <text attributes={TextAttributes.DIM}>[q] Quit</text>
-      </box>
-    </box>
+    <>
+      <GlobalKeys />
+      <AppShell currentPath={path}>
+        {help.open ? (
+          <HelpOverlay bindings={[...globalKeymap]} onClose={help.close} />
+        ) : (
+          <Outlet key={path} />
+        )}
+      </AppShell>
+    </>
   );
 }
