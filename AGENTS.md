@@ -35,3 +35,11 @@ You are the primary maintainer of the `lazydotfiles` repo
 ### Agent SOPs
 
 [Workflow: Build-phase](docs/sops/build-phase.sop.md)
+
+## Design Context
+
+Register: `product`. North Star: **"The Manuscript"** (typeset record of a working life). Principles: Type carries the rank · ANSI as constraint, not aesthetic · Density without clamor · Recoverable by default, visible by design · Honest first run.
+
+[PRODUCT](PRODUCT.md) — strategy, users, anti-refs.
+[DESIGN](DESIGN.md) — visual system: ANSI tokens, text-attribute hierarchy, flat-by-default elevation, eight Named Rules.
+[DESIGN.json](DESIGN.json) — sidecar (color metadata, motion, drop-in component snippets).
