@@ -1,4 +1,4 @@
-import { TextAttributes } from "@opentui/core";
+import { type ColorInput, TextAttributes } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { basename, dirname } from "node:path";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -79,7 +79,7 @@ function reasonText(reason: DiscoveryCandidate["reason"]): string {
   }
 }
 
-function statusFg(status: CandidateStatus, t: Tokens): string {
+function statusFg(status: CandidateStatus, t: Tokens): ColorInput {
   switch (status) {
     case "accepted":
       return t.fg.success;

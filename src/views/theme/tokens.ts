@@ -1,16 +1,29 @@
-import type { BorderStyle } from "@opentui/core";
+import { type BorderStyle, type ColorInput, RGBA } from "@opentui/core";
 
 /**
- * Semantic theme tokens. Values are hand-picked hex codes whose perceptual
- * lightness/chroma curves mirror an OKLCH-driven palette (warm-tinted neutrals
- * with one signature amber for focus and a calm sage green for action).
+ * Semantic theme tokens. Color values inherit from the user's terminal palette:
+ * `RGBA.defaultForeground/Background` carry intent="default" (the terminal's
+ * own fg/bg), and `RGBA.fromIndex(N)` carries intent="indexed" against ANSI
+ * indices 0–15. The renderer translates both to whatever the user's terminal
+ * actually shows, so the app re-skins itself when the user changes terminal
+ * theme — no hex literals, no hard-coded brand color.
+ *
+ *   ANSI 0  black           ANSI 8  bright black (gray)
+ *   ANSI 1  red             ANSI 9  bright red
+ *   ANSI 2  green           ANSI 10 bright green
+ *   ANSI 3  yellow          ANSI 11 bright yellow
+ *   ANSI 4  blue            ANSI 12 bright blue
+ *   ANSI 5  magenta         ANSI 13 bright magenta
+ *   ANSI 6  cyan            ANSI 14 bright cyan
+ *   ANSI 7  white           ANSI 15 bright white
  *
  * Naming reflects role, not appearance:
- *   - `heading`: titles, section labels — slightly brighter than default
+ *   - `heading`: titles, section labels — same hue as default; emphasis comes
+ *                from the BOLD attribute applied at the call site
  *   - `focus`:   the active selection marker — used only on the focused row
  *   - `action`:  interactive verbs (modal confirm button, toast on success)
  *   - `muted`:   secondary copy (counts, hints) — formerly `dim`
- *   - `subtle`:  between muted and elevated background — borders, quiet rails
+ *   - `subtle`:  borders, quiet rails — same role as muted in the indexed palette
  *   - `success`: completed state ("accepted", "tracked OK")
  *   - `danger`:  error / destructive surface
  *
@@ -20,23 +33,23 @@ import type { BorderStyle } from "@opentui/core";
 export interface Tokens {
   readonly mode: "dark" | "light";
   readonly fg: {
-    readonly default: string;
-    readonly heading: string;
-    readonly focus: string;
-    readonly action: string;
-    readonly muted: string;
-    readonly subtle: string;
-    readonly success: string;
-    readonly danger: string;
+    readonly default: ColorInput;
+    readonly heading: ColorInput;
+    readonly focus: ColorInput;
+    readonly action: ColorInput;
+    readonly muted: ColorInput;
+    readonly subtle: ColorInput;
+    readonly success: ColorInput;
+    readonly danger: ColorInput;
     /** @deprecated alias of `muted` */
-    readonly dim: string;
+    readonly dim: ColorInput;
     /** @deprecated alias of `focus` */
-    readonly accent: string;
+    readonly accent: ColorInput;
   };
   readonly bg: {
-    readonly default: string;
-    readonly surface: string;
-    readonly elevated: string;
+    readonly default: ColorInput;
+    readonly surface: ColorInput;
+    readonly elevated: ColorInput;
   };
   readonly border: {
     readonly default: BorderStyle;
@@ -49,56 +62,45 @@ export interface Tokens {
   };
 }
 
-const darkBase = {
-  default: "#ebe6e0",
-  heading: "#f5efe7",
-  focus: "#e0a85c",
-  action: "#a3c47e",
-  muted: "#9b958e",
-  subtle: "#5e5953",
-  success: "#a3c47e",
-  danger: "#d97a6c",
+const ansiFg = {
+  default: RGBA.defaultForeground(),
+  heading: RGBA.defaultForeground(),
+  focus: RGBA.fromIndex(11),
+  action: RGBA.fromIndex(10),
+  muted: RGBA.fromIndex(8),
+  subtle: RGBA.fromIndex(8),
+  success: RGBA.fromIndex(10),
+  danger: RGBA.fromIndex(9),
+} as const;
+
+const ansiFgWithAliases = {
+  ...ansiFg,
+  dim: ansiFg.muted,
+  accent: ansiFg.focus,
+} as const;
+
+const sharedShape = {
+  fg: ansiFgWithAliases,
+  border: { default: "single", emphasis: "double" },
+  space: { sm: 1, md: 2, lg: 4 },
 } as const;
 
 export const dark: Tokens = {
+  ...sharedShape,
   mode: "dark",
-  fg: {
-    ...darkBase,
-    dim: darkBase.muted,
-    accent: darkBase.focus,
-  },
   bg: {
-    default: "#1a1816",
-    surface: "#262320",
-    elevated: "#2f2b27",
+    default: RGBA.defaultBackground(),
+    surface: RGBA.fromIndex(0),
+    elevated: RGBA.fromIndex(8),
   },
-  border: { default: "single", emphasis: "double" },
-  space: { sm: 1, md: 2, lg: 4 },
 };
 
-const lightBase = {
-  default: "#2a2620",
-  heading: "#1a1612",
-  focus: "#9c5e1a",
-  action: "#5b7a3f",
-  muted: "#6b665e",
-  subtle: "#a8a39a",
-  success: "#5b7a3f",
-  danger: "#a14d3c",
-} as const;
-
 export const light: Tokens = {
+  ...sharedShape,
   mode: "light",
-  fg: {
-    ...lightBase,
-    dim: lightBase.muted,
-    accent: lightBase.focus,
-  },
   bg: {
-    default: "#f8f5f0",
-    surface: "#efeae3",
-    elevated: "#e6e0d6",
+    default: RGBA.defaultBackground(),
+    surface: RGBA.fromIndex(7),
+    elevated: RGBA.fromIndex(15),
   },
-  border: { default: "single", emphasis: "double" },
-  space: { sm: 1, md: 2, lg: 4 },
 };
