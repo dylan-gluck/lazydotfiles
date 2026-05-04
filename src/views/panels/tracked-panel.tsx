@@ -96,20 +96,12 @@ export function TrackedPanel({ model, backupRoot, home, onViewLog }: TrackedPane
 
   if (model.error !== null) {
     return (
-      <box flexGrow={1} alignItems="center" justifyContent="center">
-        <box
-          backgroundColor={t.bg.surface}
-          borderStyle={t.border.emphasis}
-          flexDirection="column"
-          padding={t.space.md}
-          gap={t.space.sm}
-        >
-          <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-            Tracked panel error
-          </text>
-          <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-          <text fg={t.fg.dim}>Press any key to dismiss.</text>
-        </box>
+      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
+        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
+          Tracked panel error
+        </text>
+        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
+        <text fg={t.fg.muted}>any key to dismiss</text>
       </box>
     );
   }
@@ -117,7 +109,7 @@ export function TrackedPanel({ model, backupRoot, home, onViewLog }: TrackedPane
   if (model.tracked.length === 0) {
     return (
       <box flexGrow={1} alignItems="center" justifyContent="center">
-        <text fg={t.fg.dim}>No tracked files. Press 4 to discover.</text>
+        <text fg={t.fg.dim}>No tracked files. Press 2 to discover.</text>
       </box>
     );
   }

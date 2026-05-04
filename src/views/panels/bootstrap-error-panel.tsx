@@ -40,24 +40,19 @@ export function BootstrapErrorPanel(props: { error: ServiceError }) {
   const t = useTheme();
   const lines = summarize(props.error);
   return (
-    <box alignItems="center" flexGrow={1} justifyContent="center">
-      <box
-        backgroundColor={t.bg.surface}
-        borderStyle={t.border.emphasis}
-        flexDirection="column"
-        gap={t.space.sm}
-        padding={t.space.md}
-      >
-        <text attributes={TextAttributes.BOLD} fg={t.fg.danger}>
-          Bootstrap failed
+    <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
+      <text attributes={TextAttributes.BOLD} fg={t.fg.danger}>
+        Bootstrap failed
+      </text>
+      <text fg={t.fg.muted}>tag: {props.error.tag}</text>
+      {lines.map((line, idx) => (
+        <text fg={t.fg.default} key={idx}>
+          {line}
         </text>
-        <text fg={t.fg.dim}>tag: {props.error.tag}</text>
-        {lines.map((line, idx) => (
-          <text fg={t.fg.default} key={idx}>
-            {line}
-          </text>
-        ))}
-        <text fg={t.fg.dim}>[q] quit</text>
+      ))}
+      <box flexDirection="row" marginTop={t.space.sm}>
+        <text fg={t.fg.focus}>q</text>
+        <text fg={t.fg.muted}> quit</text>
       </box>
     </box>
   );

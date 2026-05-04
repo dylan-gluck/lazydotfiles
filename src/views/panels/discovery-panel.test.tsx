@@ -37,10 +37,11 @@ function model(overrides: Partial<UseDiscoveryPanel> = {}): UseDiscoveryPanel {
 async function render(
   m: UseDiscoveryPanel,
   size: { width: number; height: number } = { width: 80, height: 24 },
+  extra: { dotfiles?: string; backupRoot?: string } = {},
 ): Promise<string> {
   const result = await renderToFrame(
     <ThemeProvider mode="dark">
-      <DiscoveryPanel model={m} home="/h" />
+      <DiscoveryPanel model={m} home="/h" dotfiles={extra.dotfiles} backupRoot={extra.backupRoot} />
     </ThemeProvider>,
     size,
   );
@@ -113,6 +114,34 @@ describe("DiscoveryPanel", () => {
     );
     expect(frame).toContain("Discovery failed");
     expect(frame).toContain("boom");
+  });
+
+  test("inline-expands focused candidate with on-accept move plan", async () => {
+    const c = makeCandidate({
+      path: "/h/.zshrc",
+      kind: "file",
+      reason: "include",
+    });
+    const frame = await render(
+      model({
+        queue: [c],
+        counts: { pending: 1, accepted: 0, rejected: 0, deferred: 0 },
+      }),
+      { width: 100, height: 30 },
+      { dotfiles: "/h/dotfiles", backupRoot: "/h/.dotfiles.bak" },
+    );
+    // Preview labels appear inline below the focused candidate row.
+    expect(frame).toContain("path");
+    expect(frame).toContain("reason");
+    expect(frame).toContain("on accept");
+    expect(frame).toContain("symlink replaces original");
+    // Move plan tildifies both endpoints.
+    expect(frame).toContain("~/.zshrc");
+    expect(frame).toContain("~/dotfiles/.zshrc");
+    // Backup destination uses configured root and the candidate id prefix.
+    expect(frame).toContain("~/.dotfiles.bak");
+    // jj describe message shows the relative path.
+    expect(frame).toContain('jj describe -m "track .zshrc"');
   });
 
   test("hides deeply nested paths until parent is expanded", async () => {

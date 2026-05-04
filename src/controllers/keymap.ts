@@ -21,7 +21,7 @@ const whenIdle = (ctx: KeymapContext): boolean => !ctx.inputActive;
 export const globalKeymap: readonly Binding[] = [
   {
     keys: ["1"],
-    description: "Status",
+    description: "Home",
     when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/" });
@@ -29,22 +29,6 @@ export const globalKeymap: readonly Binding[] = [
   },
   {
     keys: ["2"],
-    description: "About",
-    when: whenIdle,
-    run: ({ router }) => {
-      void router.navigate({ to: "/about" });
-    },
-  },
-  {
-    keys: ["3"],
-    description: "Config",
-    when: whenIdle,
-    run: ({ router }) => {
-      void router.navigate({ to: "/config" });
-    },
-  },
-  {
-    keys: ["4"],
     description: "Discover",
     when: whenIdle,
     run: ({ router }) => {
@@ -52,27 +36,11 @@ export const globalKeymap: readonly Binding[] = [
     },
   },
   {
-    keys: ["5"],
-    description: "Tracked",
-    when: whenIdle,
-    run: ({ router }) => {
-      void router.navigate({ to: "/tracked" });
-    },
-  },
-  {
-    keys: ["6"],
+    keys: ["3"],
     description: "Log",
     when: whenIdle,
     run: ({ router }) => {
       void router.navigate({ to: "/log" });
-    },
-  },
-  {
-    keys: ["7"],
-    description: "Sync",
-    when: whenIdle,
-    run: ({ router }) => {
-      void router.navigate({ to: "/sync" });
     },
   },
   {

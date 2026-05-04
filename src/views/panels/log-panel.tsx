@@ -113,19 +113,11 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
 
   if (model.status === "error" && model.error !== null) {
     return (
-      <box flexGrow={1} alignItems="center" justifyContent="center">
-        <box
-          backgroundColor={t.bg.surface}
-          borderStyle={t.border.emphasis}
-          flexDirection="column"
-          padding={t.space.md}
-          gap={t.space.sm}
-        >
-          <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-            Log unavailable
-          </text>
-          <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-        </box>
+      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
+        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
+          Log unavailable
+        </text>
+        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
       </box>
     );
   }

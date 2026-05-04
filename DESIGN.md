@@ -114,14 +114,17 @@ Voice carries through visually. Composed, exact, quiet. Hierarchy comes from wei
 `ldf` does not own its colors; the user's terminal does. Every value below is an ANSI token (default fg/bg or one of indices 0–15). The renderer hands them to the terminal unchanged, so re-skinning is a matter of changing the terminal theme, not editing this file.
 
 ### Primary
+
 - **The Body** (`ansi:default-fg`): primary text. The voice of every panel.
 - **The Mark** (`ansi:bright-yellow`, ANSI 11): the focused row, the active binding key in the footer, the cursor glyph `›`, the page-fg behind the panel-label chip. The single most-loaded color in the system.
 
 ### Secondary
+
 - **The Approval** (`ansi:bright-green`, ANSI 10): "accepted", "tracked ok", "clean" repo, the active filter chip, the confirm button label. Affirmation only.
 - **The Correction** (`ansi:bright-red`, ANSI 9): destructive verbs, "dirty" repo, "rejected" rows, panel error surfaces. Never used for decoration.
 
 ### Neutral
+
 - **The Margin** (`ansi:bright-black`, ANSI 8): all secondary copy. Counts, hints, deferred rows, the binding descriptions in the footer, the toast rail when no event is in flight. Carries the most words on screen.
 - **The Page** (`ansi:default-bg`): the canvas. Never tinted, never inverted outside the two named exceptions.
 - **The Verso** (`ansi:black` dark / `ansi:white` light): a quieter surface used for the discovery-error inset and any boxed input that needs to read as "set apart" without claiming elevation.
@@ -142,6 +145,7 @@ Voice carries through visually. Composed, exact, quiet. Hierarchy comes from wei
 **Character:** terminal-grid, 1em-everywhere. Voice is composed and exact, the same rhythm a well-set technical book uses.
 
 ### Hierarchy
+
 - **Heading** (`TextAttributes.BOLD`, fg = body): panel titles like `/discover`, `/log`, `/sync`, plus the modal title, the active filter chip, and the confirm-button label. Used sparingly; a heading on every line is no hierarchy.
 - **Body** (default attribute, fg = body): the main reading line. List rows in default state, modal summary, status-panel header label.
 - **Margin Note** (default attribute, fg = margin): every secondary or hinting line. Counts, descriptions, deferred status, footer binding descriptions, "scanning…", "remaining", trailing hint copy.
@@ -194,7 +198,7 @@ Set in type, not built in boxes. Buttons are bracketed labels, rows are typeset 
 ### Chips (filter strip)
 
 - **Active:** BOLD + the-approval, wrapped in literal brackets: `[pending 7]`.
-- **Inactive:** default attribute + margin, padded with one space on each side: ` pending 7 `.
+- **Inactive:** default attribute + margin, padded with one space on each side: `pending 7`.
 - **Never bordered.** The brackets are the affordance.
 
 ### Cards / Containers
@@ -208,7 +212,7 @@ There are none. The "cards" mentioned in the PRD are not cards in the visual sen
 
 ### Navigation
 
-- **Footer.** One row, height=1. Left → reverse-fg label chip with the active panel name. Center → the active panel's bindings, plus a global `? more` hint, separated by ` · ` in margin. Right → the current path in margin.
+- **Footer.** One row, height=1. Left → reverse-fg label chip with the active panel name. Center → the active panel's bindings, plus a global `? more` hint, separated by `·` in margin. Right → the current path in margin.
 - **Help drawer.** Opens in place of the footer. Three column-major columns of `key  desc` rows. Key in the-mark, desc in margin. Sections are the active panel's bindings followed by the global keymap. Closed by `?` or `Esc`.
 
 ### Modal (signature component)

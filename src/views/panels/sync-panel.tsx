@@ -33,6 +33,19 @@ function nextAutoSyncIso(model: UseSyncPanel): string | null {
   return new Date(t + INTERVAL_MS[interval]).toISOString();
 }
 
+function ActionToken(props: {
+  readonly label: string;
+  readonly hotkey: string;
+  readonly active: boolean;
+  readonly idle: boolean;
+}): ReactNode {
+  const t = useTheme();
+  if (props.active) {
+    return <text fg={t.fg.success} attributes={TextAttributes.BOLD}>{`[${props.label}]`}</text>;
+  }
+  return <text fg={props.idle ? t.fg.default : t.fg.muted}>{`[${props.label}]`}</text>;
+}
+
 export function SyncPanel({ model }: SyncPanelProps): ReactNode {
   const t = useTheme();
   usePublishPanelLabel("sync");
@@ -102,35 +115,40 @@ export function SyncPanel({ model }: SyncPanelProps): ReactNode {
         <text fg={model.state.dirty ? t.fg.danger : t.fg.dim}>{dirtyLabel}</text>
       </box>
 
-      {/* Action row */}
+      {/* Action row. Default-fg by default; the active in-flight phase gets
+          BOLD success-green; idle siblings during in-flight render muted. */}
       <box flexDirection="row" gap={t.space.md} paddingLeft={1} paddingRight={1}>
-        <text fg={inFlight ? t.fg.dim : t.fg.success} attributes={TextAttributes.BOLD}>
-          [Fetch]
-        </text>
-        <text fg={inFlight ? t.fg.dim : t.fg.success} attributes={TextAttributes.BOLD}>
-          [Push]
-        </text>
-        <text fg={inFlight ? t.fg.dim : t.fg.success} attributes={TextAttributes.BOLD}>
-          [Sync]
-        </text>
+        <ActionToken
+          label="Fetch"
+          hotkey="f"
+          active={model.phase === "fetching"}
+          idle={!inFlight}
+        />
+        <ActionToken label="Push" hotkey="p" active={model.phase === "pushing"} idle={!inFlight} />
+        <ActionToken
+          label="Sync"
+          hotkey="s"
+          active={model.phase === "syncing" || model.phase === "refreshing"}
+          idle={!inFlight}
+        />
       </box>
 
       {/* Body */}
       <box flexGrow={1} flexDirection="column" padding={t.space.sm}>
         {showError ? (
-          <box
-            backgroundColor={t.bg.surface}
-            borderStyle={t.border.emphasis}
-            flexDirection="column"
-            padding={t.space.md}
-            gap={t.space.sm}
-          >
+          <box flexDirection="column" gap={t.space.sm}>
             <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
               Sync failed
             </text>
             <text fg={t.fg.default}>
               {model.error !== null ? summarizeServiceError(model.error) : ""}
             </text>
+            <box flexDirection="row">
+              <text fg={t.fg.focus}>s</text>
+              <text fg={t.fg.muted}> retry · </text>
+              <text fg={t.fg.focus}>f</text>
+              <text fg={t.fg.muted}> fetch only</text>
+            </box>
           </box>
         ) : showConflicts ? (
           <box flexDirection="column" gap={t.space.sm}>

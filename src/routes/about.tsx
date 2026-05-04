@@ -50,6 +50,23 @@ function About() {
         <text fg={t.fg.muted}>
           {`tracked: ${status.trackedCount}  ·  queued: ${status.queueCount}  ·  remote: ${status.sync.remote ?? "(unset)"}`}
         </text>
+        <text fg={t.fg.muted}>
+          jj is a git-compatible version control system. Every change you make here is captured as a
+          jj operation and is reachable from the log.
+        </text>
+      </box>
+
+      <box flexDirection="column" marginTop={t.space.sm}>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
+          Discovery vocabulary
+        </text>
+        <text fg={t.fg.muted}>
+          glob · path matched a discovery.include pattern from your config.
+        </text>
+        <text fg={t.fg.muted}>
+          near · file is a sibling of one you already accepted (same parent dir).
+        </text>
+        <text fg={t.fg.muted}>auto · auto-tracked from a non-glob include.</text>
       </box>
 
       <box flexDirection="column" marginTop={t.space.sm}>

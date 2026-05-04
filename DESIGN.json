@@ -8,61 +8,151 @@
         "role": "neutral",
         "displayName": "The Page",
         "canonical": "ansi:default-bg",
-        "tonalRamp": ["#0a0a0a", "#141414", "#1c1c1c", "#262626", "#3a3a3a", "#5c5c5c", "#a3a3a3", "#e5e5e5"]
+        "tonalRamp": [
+          "#0a0a0a",
+          "#141414",
+          "#1c1c1c",
+          "#262626",
+          "#3a3a3a",
+          "#5c5c5c",
+          "#a3a3a3",
+          "#e5e5e5"
+        ]
       },
       "body": {
         "role": "neutral",
         "displayName": "The Body",
         "canonical": "ansi:default-fg",
-        "tonalRamp": ["#1a1a1a", "#2a2a2a", "#404040", "#5c5c5c", "#7a7a7a", "#a3a3a3", "#cdcdcd", "#f0f0f0"]
+        "tonalRamp": [
+          "#1a1a1a",
+          "#2a2a2a",
+          "#404040",
+          "#5c5c5c",
+          "#7a7a7a",
+          "#a3a3a3",
+          "#cdcdcd",
+          "#f0f0f0"
+        ]
       },
       "the-mark": {
         "role": "primary",
         "displayName": "The Mark",
         "canonical": "ansi:bright-yellow (≈ #ffff00)",
-        "tonalRamp": ["#3a2f00", "#5c4900", "#806600", "#a68600", "#cda500", "#f0c800", "#ffe040", "#fff299"]
+        "tonalRamp": [
+          "#3a2f00",
+          "#5c4900",
+          "#806600",
+          "#a68600",
+          "#cda500",
+          "#f0c800",
+          "#ffe040",
+          "#fff299"
+        ]
       },
       "the-approval": {
         "role": "secondary",
         "displayName": "The Approval",
         "canonical": "ansi:bright-green (≈ #00ff00)",
-        "tonalRamp": ["#003a00", "#005c00", "#008000", "#00a600", "#00cd00", "#33ee33", "#80ff80", "#cfffcf"]
+        "tonalRamp": [
+          "#003a00",
+          "#005c00",
+          "#008000",
+          "#00a600",
+          "#00cd00",
+          "#33ee33",
+          "#80ff80",
+          "#cfffcf"
+        ]
       },
       "the-correction": {
         "role": "tertiary",
         "displayName": "The Correction",
         "canonical": "ansi:bright-red (≈ #ff0000)",
-        "tonalRamp": ["#3a0000", "#5c0000", "#800000", "#a60000", "#cd0000", "#ff3333", "#ff8080", "#ffcccc"]
+        "tonalRamp": [
+          "#3a0000",
+          "#5c0000",
+          "#800000",
+          "#a60000",
+          "#cd0000",
+          "#ff3333",
+          "#ff8080",
+          "#ffcccc"
+        ]
       },
       "margin": {
         "role": "neutral",
         "displayName": "The Margin",
         "canonical": "ansi:bright-black (≈ #7f7f7f)",
-        "tonalRamp": ["#141414", "#262626", "#3a3a3a", "#525252", "#7f7f7f", "#a3a3a3", "#c4c4c4", "#e5e5e5"]
+        "tonalRamp": [
+          "#141414",
+          "#262626",
+          "#3a3a3a",
+          "#525252",
+          "#7f7f7f",
+          "#a3a3a3",
+          "#c4c4c4",
+          "#e5e5e5"
+        ]
       },
       "verso-dark": {
         "role": "neutral",
         "displayName": "The Verso (dark)",
         "canonical": "ansi:black (≈ #0a0a0a)",
-        "tonalRamp": ["#050505", "#0a0a0a", "#141414", "#1c1c1c", "#262626", "#3a3a3a", "#525252", "#7f7f7f"]
+        "tonalRamp": [
+          "#050505",
+          "#0a0a0a",
+          "#141414",
+          "#1c1c1c",
+          "#262626",
+          "#3a3a3a",
+          "#525252",
+          "#7f7f7f"
+        ]
       },
       "elevated-verso-dark": {
         "role": "neutral",
         "displayName": "The Elevated Verso (dark)",
         "canonical": "ansi:bright-black (≈ #2a2a2a in elevated context)",
-        "tonalRamp": ["#141414", "#1c1c1c", "#262626", "#3a3a3a", "#525252", "#7f7f7f", "#a3a3a3", "#c4c4c4"]
+        "tonalRamp": [
+          "#141414",
+          "#1c1c1c",
+          "#262626",
+          "#3a3a3a",
+          "#525252",
+          "#7f7f7f",
+          "#a3a3a3",
+          "#c4c4c4"
+        ]
       },
       "verso-light": {
         "role": "neutral",
         "displayName": "The Verso (light)",
         "canonical": "ansi:white (≈ #e5e5e5)",
-        "tonalRamp": ["#7f7f7f", "#a3a3a3", "#c4c4c4", "#d6d6d6", "#e5e5e5", "#ededed", "#f5f5f5", "#fbfbfb"]
+        "tonalRamp": [
+          "#7f7f7f",
+          "#a3a3a3",
+          "#c4c4c4",
+          "#d6d6d6",
+          "#e5e5e5",
+          "#ededed",
+          "#f5f5f5",
+          "#fbfbfb"
+        ]
       },
       "elevated-verso-light": {
         "role": "neutral",
         "displayName": "The Elevated Verso (light)",
         "canonical": "ansi:bright-white (≈ #ffffff)",
-        "tonalRamp": ["#a3a3a3", "#c4c4c4", "#d6d6d6", "#e5e5e5", "#ededed", "#f5f5f5", "#fbfbfb", "#ffffff"]
+        "tonalRamp": [
+          "#a3a3a3",
+          "#c4c4c4",
+          "#d6d6d6",
+          "#e5e5e5",
+          "#ededed",
+          "#f5f5f5",
+          "#fbfbfb",
+          "#ffffff"
+        ]
       }
     },
     "typographyMeta": {

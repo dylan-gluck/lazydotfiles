@@ -118,21 +118,13 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
 
   if (model.config === null) {
     return (
-      <box flexGrow={1} alignItems="center" justifyContent="center">
-        <box
-          backgroundColor={t.bg.surface}
-          borderStyle={t.border.emphasis}
-          flexDirection="column"
-          padding={t.space.md}
-          gap={t.space.sm}
-        >
-          <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-            Config unavailable
-          </text>
-          <text fg={t.fg.default}>
-            {model.error !== null ? summarizeServiceError(model.error) : "(no config loaded)"}
-          </text>
-        </box>
+      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
+        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
+          Config unavailable
+        </text>
+        <text fg={t.fg.default}>
+          {model.error !== null ? summarizeServiceError(model.error) : "(no config loaded)"}
+        </text>
       </box>
     );
   }
@@ -185,14 +177,16 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      <box flexDirection="column" flexGrow={1} padding={t.space.sm} gap={t.space.sm}>
+      <box
+        flexDirection="column"
+        flexGrow={1}
+        paddingLeft={1}
+        paddingRight={1}
+        paddingTop={1}
+        gap={t.space.lg}
+      >
         {sections.map((s) => (
-          <box
-            key={s.title}
-            flexDirection="column"
-            borderStyle={t.border.default}
-            padding={t.space.sm}
-          >
+          <box key={s.title} flexDirection="column">
             <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
               {s.title}
             </text>
@@ -209,7 +203,7 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
                     </text>
                   </box>
                   <box flexGrow={2} flexBasis={0}>
-                    <text fg={isReadonly ? t.fg.dim : t.fg.default}>{renderValue(r.value)}</text>
+                    <text fg={isReadonly ? t.fg.muted : t.fg.default}>{renderValue(r.value)}</text>
                   </box>
                 </box>
               );
@@ -219,7 +213,7 @@ export function ConfigPanel({ model }: ConfigPanelProps): ReactNode {
       </box>
 
       {model.error !== null ? (
-        <box flexDirection="column" paddingLeft={1} paddingRight={1} backgroundColor={t.bg.surface}>
+        <box flexDirection="column" paddingLeft={1} paddingRight={1}>
           <text fg={t.fg.danger}>{summarizeServiceError(model.error)}</text>
         </box>
       ) : null}

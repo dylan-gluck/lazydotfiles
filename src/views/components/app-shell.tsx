@@ -18,6 +18,18 @@ export interface AppShellProps {
 const SEP = " · ";
 const HELP_HINT: PanelBinding = { keys: "?", description: "more" };
 
+interface NavSlot {
+  readonly key: string;
+  readonly path: string;
+  readonly label: string;
+}
+
+const NAV_SLOTS: readonly NavSlot[] = [
+  { key: "1", path: "/", label: "home" },
+  { key: "2", path: "/discover", label: "discover" },
+  { key: "3", path: "/log", label: "log" },
+];
+
 /**
  * Top-level frame: route content fills available space; the bottom rail is
  * either a one-line footer (label chip + active-panel keybinds + `? more`) or,
@@ -36,6 +48,7 @@ export function AppShell({
   const label = useActivePanelLabel();
   return (
     <box flexDirection="column" flexGrow={1} backgroundColor={t.bg.default}>
+      <Breadcrumb currentPath={currentPath} />
       <box flexGrow={1} overflow="hidden">
         {children}
       </box>
@@ -44,6 +57,44 @@ export function AppShell({
       ) : (
         <Footer label={label} bindings={bindings} currentPath={currentPath} />
       )}
+    </box>
+  );
+}
+
+/**
+ * Permanent panel-nav row: surfaces the `1..7` digit keymap so newcomers can
+ * see the spine of the app without pressing `?`. The active slot wears the
+ * cursor glyph plus the-mark; the rest are subtle. Single line, no chrome.
+ */
+function Breadcrumb({ currentPath }: { readonly currentPath: string }): ReactNode {
+  const t = useTheme();
+  return (
+    <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
+      {NAV_SLOTS.flatMap((slot, i) => {
+        const active = slot.path === currentPath;
+        const segs: ReactNode[] = [];
+        if (i > 0) {
+          segs.push(
+            <text key={`sep-${i}`} fg={t.fg.subtle}>
+              {SEP}
+            </text>,
+          );
+        }
+        if (active) {
+          segs.push(
+            <text key={`k-${i}`} fg={t.fg.focus} attributes={TextAttributes.BOLD}>
+              {`›${slot.key} ${slot.label}`}
+            </text>,
+          );
+        } else {
+          segs.push(
+            <text key={`k-${i}`} fg={t.fg.subtle}>
+              {`${slot.key} ${slot.label}`}
+            </text>,
+          );
+        }
+        return segs;
+      })}
     </box>
   );
 }

@@ -17,5 +17,13 @@ function Discover() {
     // model.status / model.rescan are stable; we only want this on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <DiscoveryPanel model={model} home={config.state.config?.path.home} />;
+  const paths = config.state.config?.path;
+  return (
+    <DiscoveryPanel
+      model={model}
+      home={paths?.home}
+      dotfiles={paths?.dotfiles}
+      backupRoot={paths?.backup}
+    />
+  );
 }

@@ -13,7 +13,7 @@ import {
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { summarizeServiceError } from "../components/summarize-error";
-import { shortDir, truncateToWidth } from "../lib/truncate-path";
+import { shortDir, tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 import type { Tokens } from "../theme";
 
@@ -21,6 +21,10 @@ export interface DiscoveryPanelProps {
   readonly model: UseDiscoveryPanel;
   /** Home dir used to tildify display paths. Defaults to $HOME. */
   readonly home?: string;
+  /** Dotfiles repo root, used to render the on-accept move plan in inline preview. */
+  readonly dotfiles?: string;
+  /** Backup root, used to render the on-accept backup destination in inline preview. */
+  readonly backupRoot?: string;
 }
 
 const TOAST_MS = 4000;
@@ -205,7 +209,12 @@ function formatNodeCounts(node: DirNode): string {
   return parts.join(" ");
 }
 
-export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode {
+export function DiscoveryPanel({
+  model,
+  home,
+  dotfiles,
+  backupRoot,
+}: DiscoveryPanelProps): ReactNode {
   const t = useTheme();
   const homeDir = home ?? process.env["HOME"] ?? "";
   usePublishPanelLabel("discover");
@@ -458,19 +467,14 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
   // Render error state — but still mount the keyboard handler above.
   if (model.status === "error" && model.error !== null) {
     return (
-      <box flexDirection="column" flexGrow={1} alignItems="center" justifyContent="center">
-        <box
-          backgroundColor={t.bg.surface}
-          borderStyle={t.border.emphasis}
-          flexDirection="column"
-          padding={t.space.md}
-          gap={t.space.sm}
-        >
-          <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-            Discovery failed
-          </text>
-          <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-          <text fg={t.fg.dim}>[r] retry</text>
+      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
+        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
+          Discovery failed
+        </text>
+        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
+        <box flexDirection="row" marginTop={t.space.sm}>
+          <text fg={t.fg.focus}>r</text>
+          <text fg={t.fg.muted}> retry</text>
         </box>
       </box>
     );
@@ -483,14 +487,18 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
   const total = totalPending + totalAccepted + totalDeferred + totalRejected;
 
   const filteredCandidateCount = tree.total;
+  const showFilterStrip = searchOpen || filter !== "pending" || query.length > 0;
+  // When the filter strip is up, the chips already carry the per-status
+  // breakdown — drop the trailing accepted/deferred counts from the header
+  // line so the same number does not appear twice on screen.
   const headerLine =
     model.status === "scanning"
       ? `scanning… ${total} found so far`
       : query.length > 0
         ? `filter '${query}' · ${filteredCandidateCount} of ${total}`
-        : `${total} candidates · ${totalAccepted} accepted · ${totalDeferred} deferred`;
-
-  const showFilterStrip = searchOpen || filter !== "pending" || query.length > 0;
+        : showFilterStrip
+          ? `${total} candidates`
+          : `${total} candidates · ${totalAccepted} accepted · ${totalDeferred} deferred`;
 
   const showToast = lastAction !== null && now - lastAction.at < TOAST_MS;
 
@@ -584,7 +592,7 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
             );
             const end = Math.min(rows.length, start + window);
             const visible = rows.slice(start, end);
-            return visible.map((row, vi) => {
+            return visible.flatMap((row, vi): ReactNode[] => {
               const idx = start + vi;
               const isFocused = idx === focusIdx;
               const indent = " ".repeat(row.depth * 2);
@@ -596,11 +604,11 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
                 const cursor = isFocused ? "›" : " ";
                 const hint = isFocused ? "  A·D·X" : "";
                 const line = `${cursor} ${indent}${triangle} ${display}  ${counts}${hint}`;
-                return (
+                return [
                   <text key={`d:${row.node.path}`} fg={isFocused ? t.fg.focus : t.fg.default}>
                     {line}
-                  </text>
-                );
+                  </text>,
+                ];
               }
               const c = row.candidate;
               const display = truncateToWidth(basename(c.path), CHILD_NAME_MAX);
@@ -609,11 +617,24 @@ export function DiscoveryPanel({ model, home }: DiscoveryPanelProps): ReactNode 
               const statusSuffix = c.status === "pending" ? "" : `  ${c.status}`;
               const hint = isFocused ? "  a·d·x" : "";
               const line = `${cursor} ${indent}${reasonPad} ${display}${statusSuffix}${hint}`;
-              return (
+              const out: ReactNode[] = [
                 <text key={`c:${c.id}`} fg={isFocused ? t.fg.focus : statusFg(c.status, t)}>
                   {line}
-                </text>
-              );
+                </text>,
+              ];
+              if (isFocused) {
+                out.push(
+                  <CandidatePreview
+                    key={`p:${c.id}`}
+                    candidate={c}
+                    indent={indent.length + 2}
+                    home={homeDir}
+                    dotfiles={dotfiles}
+                    backupRoot={backupRoot}
+                  />,
+                );
+              }
+              return out;
             });
           })()
         )}
@@ -670,6 +691,101 @@ function ToastRail(props: {
         {props.label} · {props.remaining} pending
       </text>
       {props.canUndo ? <text fg={t.fg.dim}>[u] undo</text> : null}
+    </box>
+  );
+}
+
+const PREVIEW_LABEL_WIDTH = 12;
+
+function reasonExplanation(c: DiscoveryCandidate): string {
+  switch (c.reason) {
+    case "include":
+      return "matched include glob";
+    case "sibling-of":
+      return c.siblings.length > 0
+        ? `near tracked sibling ${basename(c.siblings[0] ?? "")}`
+        : "near tracked sibling";
+    case "auto":
+      return "auto-tracked rule";
+  }
+}
+
+function relPath(absPath: string, home: string): string {
+  if (home.length === 0) return absPath;
+  if (absPath === home) return ".";
+  return absPath.startsWith(`${home}/`) ? absPath.slice(home.length + 1) : absPath;
+}
+
+function shortId(id: string): string {
+  return id.slice(0, 4);
+}
+
+/**
+ * Inline-expand preview of the focused candidate. Reads as a typeset spec
+ * sheet pinned beneath the row: `path`, `matched`, `siblings`, then an
+ * `on accept` block listing the move plan, the symlink swap, and the
+ * backup destination.
+ *
+ * The focused row above already wears `the-mark`; the preview sits in
+ * margin foreground so the eye returns to the row when it's done reading.
+ */
+function CandidatePreview({
+  candidate,
+  indent,
+  home,
+  dotfiles,
+  backupRoot,
+}: {
+  readonly candidate: DiscoveryCandidate;
+  readonly indent: number;
+  readonly home: string;
+  readonly dotfiles: string | undefined;
+  readonly backupRoot: string | undefined;
+}): ReactNode {
+  const t = useTheme();
+  const pad = " ".repeat(indent);
+  const tildePath = tildify(candidate.path, home);
+  const rel = relPath(candidate.path, home);
+  const acceptMove =
+    dotfiles !== undefined && rel !== candidate.path
+      ? `move ${tildePath}  →  ${tildify(`${dotfiles}/${rel}`, home)}`
+      : `move ${tildePath}  →  <dotfiles>/${rel}`;
+  const backupDest =
+    backupRoot !== undefined
+      ? `${tildify(backupRoot, home)}/${shortId(candidate.id)}/<timestamp>/`
+      : `<backup>/${shortId(candidate.id)}/<timestamp>/`;
+  const jjMessage = `jj describe -m "track ${rel}"`;
+
+  const Field = ({
+    label,
+    value,
+    tone,
+  }: {
+    readonly label: string;
+    readonly value: string;
+    readonly tone?: "default" | "danger";
+  }): ReactNode => {
+    const fg = tone === "danger" ? t.fg.danger : t.fg.muted;
+    return <text fg={fg}>{`${pad}${label.padEnd(PREVIEW_LABEL_WIDTH)}${value}`}</text>;
+  };
+
+  // siblings line surfaces an actionable count, not the full listing.
+  const siblingsLine =
+    candidate.siblings.length === 0 ? "none" : `${candidate.siblings.length} in same directory`;
+
+  return (
+    <box flexDirection="column">
+      <text fg={t.fg.muted}>
+        {`${pad}${basename(candidate.path)}  · ${candidate.kind} · ${candidate.status}`}
+      </text>
+      <Field label="path" value={tildePath} />
+      <Field label="reason" value={reasonExplanation(candidate)} />
+      <Field label="siblings" value={siblingsLine} />
+      <text fg={t.fg.muted}>{`${pad}on accept`}</text>
+      <text fg={t.fg.muted}>{`${pad}  ${acceptMove}`}</text>
+      <text fg={t.fg.muted}>{`${pad}  symlink replaces original`}</text>
+      <text fg={t.fg.muted}>{`${pad}  backup    ${backupDest}`}</text>
+      <text fg={t.fg.muted}>{`${pad}  ${jjMessage}`}</text>
     </box>
   );
 }
