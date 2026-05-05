@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Glob } from "bun";
 
 // Match width={N} or height={N} where N is an integer literal.
-// Allowed: height={1} (status bars per CONSTITUTION §2.2 exception).
+// Allowed: height={1} and width={1} — fixed UI affordances (status bars,
+// single-glyph cursor / icon slots) per CONSTITUTION §2.2 exception.
 // Anything else for layout flow is prohibited.
 const SIZE_RE = /\b(width|height)=\{(-?\d+)\}/g;
 
@@ -20,7 +21,7 @@ describe("layout discipline", () => {
         while ((m = SIZE_RE.exec(line)) !== null) {
           const dim = m[1];
           const value = Number(m[2]);
-          if (dim === "height" && value === 1) continue;
+          if ((dim === "height" || dim === "width") && value === 1) continue;
           violations.push(`${path}:${idx + 1}  ${line.trim()}`);
         }
       });

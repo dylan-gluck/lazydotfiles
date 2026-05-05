@@ -40,14 +40,13 @@ function PanelStub(props: {
 }
 
 describe("AppShell", () => {
-  test("renders child content, current path, and ? more hint", async () => {
+  test("renders child content and ? more hint", async () => {
     const frame = await render(
-      <AppShell currentPath="/tracked">
+      <AppShell>
         <text>body</text>
       </AppShell>,
     );
     expect(frame).toContain("body");
-    expect(frame).toContain("/tracked");
     expect(frame).toContain("? more");
     // No nav-key clutter when the active panel publishes nothing.
     expect(frame).not.toContain("[1] status");
@@ -55,7 +54,7 @@ describe("AppShell", () => {
 
   test("renders panel-published bindings inline in the footer", async () => {
     const frame = await render(
-      <AppShell currentPath="/discover">
+      <AppShell>
         <PanelStub
           bindings={[
             { keys: "a/A", description: "accept" },
@@ -70,12 +69,11 @@ describe("AppShell", () => {
     expect(frame).toContain("accept");
     expect(frame).toContain("search");
     expect(frame).toContain("? more");
-    expect(frame).toContain("/discover");
   });
 
   test("renders the panel label as a leading chip", async () => {
     const frame = await render(
-      <AppShell currentPath="/discover">
+      <AppShell>
         <PanelStub label="discover" bindings={[{ keys: "a", description: "accept" }]}>
           <text>body</text>
         </PanelStub>
@@ -84,12 +82,16 @@ describe("AppShell", () => {
     expect(frame).toContain("discover");
   });
 
-  test("does not render a top header (no title bar)", async () => {
+  test("AppHeader fallback renders default repo + branch tokens with no actor context", async () => {
     const frame = await render(
-      <AppShell currentPath="/">
+      <AppShell>
         <text>x</text>
       </AppShell>,
     );
-    expect(frame).not.toContain("lazydotfiles");
+    // AppHeader fallback when actor runtime is absent.
+    expect(frame).toContain("~/dotfiles");
+    expect(frame).toContain("main");
+    expect(frame).toContain("clean");
+    expect(frame).toContain("queue empty");
   });
 });

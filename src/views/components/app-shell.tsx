@@ -1,6 +1,7 @@
 import { TextAttributes } from "@opentui/core";
 import type { ReactNode } from "react";
 import { useTheme } from "../theme";
+import { AppHeader } from "./app-header";
 import { HelpDrawer } from "./help-drawer";
 import {
   type PanelBinding,
@@ -9,7 +10,6 @@ import {
 } from "./panel-bindings-context";
 
 export interface AppShellProps {
-  readonly currentPath: string;
   readonly helpOpen?: boolean;
   readonly onCloseHelp?: () => void;
   readonly children: ReactNode;
@@ -17,18 +17,6 @@ export interface AppShellProps {
 
 const SEP = " · ";
 const HELP_HINT: PanelBinding = { keys: "?", description: "more" };
-
-interface NavSlot {
-  readonly key: string;
-  readonly path: string;
-  readonly label: string;
-}
-
-const NAV_SLOTS: readonly NavSlot[] = [
-  { key: "1", path: "/", label: "home" },
-  { key: "2", path: "/discover", label: "discover" },
-  { key: "3", path: "/log", label: "log" },
-];
 
 /**
  * Top-level frame: route content fills available space; the bottom rail is
@@ -43,6 +31,7 @@ export function AppShell({ helpOpen, onCloseHelp, children }: AppShellProps): Re
   const label = useActivePanelLabel();
   return (
     <box flexDirection="column" flexGrow={1} backgroundColor={t.bg.default}>
+      <AppHeader />
       <box flexGrow={1} flexShrink={1} overflow="hidden">
         {children}
       </box>
@@ -51,52 +40,6 @@ export function AppShell({ helpOpen, onCloseHelp, children }: AppShellProps): Re
       ) : (
         <Footer label={label} bindings={bindings} />
       )}
-    </box>
-  );
-}
-
-/**
- * Permanent panel-nav row: surfaces the `1..7` digit keymap so newcomers can
- * see the spine of the app without pressing `?`. The active slot wears the
- * cursor glyph plus the-mark; the rest are subtle. Single line, no chrome.
- */
-function _Breadcrumb({ currentPath }: { readonly currentPath: string }): ReactNode {
-  const t = useTheme();
-  return (
-    <box
-      flexDirection="row"
-      paddingLeft={1}
-      paddingRight={1}
-      border={["bottom"]}
-      borderColor={t.fg.muted}
-    >
-      {NAV_SLOTS.flatMap((slot, i) => {
-        const active = slot.path === currentPath;
-        const segs: ReactNode[] = [];
-        if (i > 0) {
-          segs.push(
-            <text key={`sep-${i}`} fg={t.fg.subtle}>
-              {SEP}
-            </text>,
-          );
-        }
-        if (active) {
-          segs.push(
-            <text key={`k-${i}`}>
-              <span fg={t.fg.focus}>{`${slot.key} `}</span>
-              <span fg={t.fg.muted}>{`${slot.label}`}</span>
-            </text>,
-          );
-        } else {
-          segs.push(
-            <text key={`k-${i}`}>
-              <span fg={t.fg.focus}>{`${slot.key} `}</span>
-              <span fg={t.fg.muted}>{`${slot.label}`}</span>
-            </text>,
-          );
-        }
-        return segs;
-      })}
     </box>
   );
 }

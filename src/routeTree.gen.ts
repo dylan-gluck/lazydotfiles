@@ -8,114 +8,114 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as TrackedRouteImport } from "./routes/tracked";
-import { Route as SyncRouteImport } from "./routes/sync";
-import { Route as LogRouteImport } from "./routes/log";
-import { Route as DiscoverRouteImport } from "./routes/discover";
-import { Route as IndexRouteImport } from "./routes/index";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrackedRouteImport } from './routes/tracked'
+import { Route as SyncRouteImport } from './routes/sync'
+import { Route as LogRouteImport } from './routes/log'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as IndexRouteImport } from './routes/index'
 
 const TrackedRoute = TrackedRouteImport.update({
-  id: "/tracked",
-  path: "/tracked",
+  id: '/tracked',
+  path: '/tracked',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SyncRoute = SyncRouteImport.update({
-  id: "/sync",
-  path: "/sync",
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const LogRoute = LogRouteImport.update({
-  id: "/log",
-  path: "/log",
+  id: '/log',
+  path: '/log',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DiscoverRoute = DiscoverRouteImport.update({
-  id: "/discover",
-  path: "/discover",
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/discover": typeof DiscoverRoute;
-  "/log": typeof LogRoute;
-  "/sync": typeof SyncRoute;
-  "/tracked": typeof TrackedRoute;
+  '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
+  '/log': typeof LogRoute
+  '/sync': typeof SyncRoute
+  '/tracked': typeof TrackedRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/discover": typeof DiscoverRoute;
-  "/log": typeof LogRoute;
-  "/sync": typeof SyncRoute;
-  "/tracked": typeof TrackedRoute;
+  '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
+  '/log': typeof LogRoute
+  '/sync': typeof SyncRoute
+  '/tracked': typeof TrackedRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/discover": typeof DiscoverRoute;
-  "/log": typeof LogRoute;
-  "/sync": typeof SyncRoute;
-  "/tracked": typeof TrackedRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
+  '/log': typeof LogRoute
+  '/sync': typeof SyncRoute
+  '/tracked': typeof TrackedRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/discover" | "/log" | "/sync" | "/tracked";
-  fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/discover" | "/log" | "/sync" | "/tracked";
-  id: "__root__" | "/" | "/discover" | "/log" | "/sync" | "/tracked";
-  fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/discover' | '/log' | '/sync' | '/tracked'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/discover' | '/log' | '/sync' | '/tracked'
+  id: '__root__' | '/' | '/discover' | '/log' | '/sync' | '/tracked'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  DiscoverRoute: typeof DiscoverRoute;
-  LogRoute: typeof LogRoute;
-  SyncRoute: typeof SyncRoute;
-  TrackedRoute: typeof TrackedRoute;
+  IndexRoute: typeof IndexRoute
+  DiscoverRoute: typeof DiscoverRoute
+  LogRoute: typeof LogRoute
+  SyncRoute: typeof SyncRoute
+  TrackedRoute: typeof TrackedRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/tracked": {
-      id: "/tracked";
-      path: "/tracked";
-      fullPath: "/tracked";
-      preLoaderRoute: typeof TrackedRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/sync": {
-      id: "/sync";
-      path: "/sync";
-      fullPath: "/sync";
-      preLoaderRoute: typeof SyncRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/log": {
-      id: "/log";
-      path: "/log";
-      fullPath: "/log";
-      preLoaderRoute: typeof LogRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/discover": {
-      id: "/discover";
-      path: "/discover";
-      fullPath: "/discover";
-      preLoaderRoute: typeof DiscoverRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/tracked': {
+      id: '/tracked'
+      path: '/tracked'
+      fullPath: '/tracked'
+      preLoaderRoute: typeof TrackedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync': {
+      id: '/sync'
+      path: '/sync'
+      fullPath: '/sync'
+      preLoaderRoute: typeof SyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/log': {
+      id: '/log'
+      path: '/log'
+      fullPath: '/log'
+      preLoaderRoute: typeof LogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,7 +125,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogRoute: LogRoute,
   SyncRoute: SyncRoute,
   TrackedRoute: TrackedRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()

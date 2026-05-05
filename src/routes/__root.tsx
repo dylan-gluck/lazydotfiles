@@ -56,7 +56,7 @@ function RootLayout() {
   return (
     <>
       <GlobalKeys />
-      <AppShell currentPath={path} helpOpen={help.open} onCloseHelp={help.close}>
+      <AppShell helpOpen={help.open} onCloseHelp={help.close}>
         <Outlet key={path} />
       </AppShell>
     </>

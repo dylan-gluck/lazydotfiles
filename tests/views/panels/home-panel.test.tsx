@@ -69,18 +69,6 @@ async function render(m: UseHomePanel): Promise<string> {
 }
 
 describe("HomePanel", () => {
-  test("renders header with repo path, branch, and clean flag", async () => {
-    const frame = await render(model());
-    expect(frame).toContain("~/dotfiles");
-    expect(frame).toContain("main @ deadbeef");
-    expect(frame).toContain("clean");
-  });
-
-  test("dirty flag rendered when dirty=true", async () => {
-    const frame = await render(model({ dirty: true }));
-    expect(frame).toContain("dirty");
-  });
-
   test("renders four section headers in margin-note order", async () => {
     const frame = await render(model());
     expect(frame).toContain("tracked");
@@ -112,7 +100,7 @@ describe("HomePanel", () => {
     );
     expect(frame).toContain("? .config");
     expect(frame).toContain("? .claude");
-    expect(frame).toContain("41 candidates");
+    expect(frame).toContain("41 pending");
   });
 
   test("queue section empty state prompts rescan", async () => {
