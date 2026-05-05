@@ -12,7 +12,7 @@ import {
   usePublishPanelBindings,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
-import { summarizeServiceError } from "../components/summarize-error";
+import { PanelError } from "../components/panel-error";
 import { shortDir, tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 import type { Tokens } from "../theme";
@@ -467,16 +467,16 @@ export function DiscoveryPanel({
   // Render error state — but still mount the keyboard handler above.
   if (model.status === "error" && model.error !== null) {
     return (
-      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
-        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-          Discovery failed
-        </text>
-        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-        <box flexDirection="row" marginTop={t.space.sm}>
-          <text fg={t.fg.focus}>r</text>
-          <text fg={t.fg.muted}> retry</text>
-        </box>
-      </box>
+      <PanelError
+        title="Discovery failed"
+        error={model.error}
+        footer={
+          <box flexDirection="row" marginTop={t.space.sm}>
+            <text fg={t.fg.focus}>r</text>
+            <text fg={t.fg.muted}> retry</text>
+          </box>
+        }
+      />
     );
   }
 

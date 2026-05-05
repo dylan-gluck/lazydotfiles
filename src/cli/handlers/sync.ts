@@ -1,5 +1,5 @@
 import { formatServiceError, relativeAge } from "../../lib/format";
-import type { CliDeps } from "../index";
+import type { CliDeps } from "../types";
 
 export async function syncHandler(_rest: readonly string[], deps: CliDeps): Promise<number> {
   const r = await deps.services.sync.sync();

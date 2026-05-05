@@ -10,7 +10,7 @@ import {
   usePublishPanelBindings,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
-import { summarizeServiceError } from "../components/summarize-error";
+import { PanelError } from "../components/panel-error";
 import { relativeAge } from "../lib/relative-age";
 import { truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
@@ -112,14 +112,7 @@ export function LogPanel({ model }: LogPanelProps): ReactNode {
   });
 
   if (model.status === "error" && model.error !== null) {
-    return (
-      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
-        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-          Log unavailable
-        </text>
-        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-      </box>
-    );
+    return <PanelError title="Log unavailable" error={model.error} />;
   }
 
   const diffLines =

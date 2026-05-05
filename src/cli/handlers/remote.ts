@@ -1,5 +1,5 @@
 import { formatServiceError } from "../../lib/format";
-import type { CliDeps } from "../index";
+import type { CliDeps } from "../types";
 
 const USAGE = "usage: ldf remote [<url>]\n";
 

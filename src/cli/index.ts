@@ -1,4 +1,3 @@
-import type { Services } from "../composition/services";
 import { addHandler } from "./handlers/add";
 import { configHandler } from "./handlers/config";
 import { logHandler } from "./handlers/log";
@@ -6,24 +5,9 @@ import { remoteHandler } from "./handlers/remote";
 import { removeHandler } from "./handlers/remove";
 import { statusHandler } from "./handlers/status";
 import { syncHandler } from "./handlers/sync";
+import type { CliDeps } from "./types";
 
-export interface CliIO {
-  readonly stdout: (s: string) => void;
-  readonly stderr: (s: string) => void;
-  readonly env: Readonly<Record<string, string | undefined>>;
-  readonly cwd: string;
-}
-
-export interface CliDeps {
-  readonly services: Services;
-  readonly io: CliIO;
-  /**
-   * Optional TUI launcher invoked for the `ldf` no-arg path. When absent
-   * (e.g. in unit tests), `runCli([], …)` returns 0 after a successful
-   * bootstrap.
-   */
-  readonly launchTui?: () => Promise<number>;
-}
+export type { CliDeps, CliIO } from "./types";
 
 type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync" | "remote";
 

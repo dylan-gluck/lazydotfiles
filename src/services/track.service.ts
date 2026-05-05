@@ -87,6 +87,34 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
     };
   }
 
+  /**
+   * Run the jj `describe → snapshot → new` triplet that finalizes a
+   * track/untrack mutation. On any failure replays the accumulated `inverses`
+   * (which the caller seeds with `jjRestoreInverse(preOp)` once `describe`
+   * succeeds) and surfaces a Rollback error tagged `"describe"`.
+   */
+  async function describeAndAdvance(
+    message: string,
+    preOp: string | null,
+    inverses: InverseStep[],
+  ): Promise<Result<undefined, ServiceError>> {
+    const jjInverse = jjRestoreInverse(preOp);
+    const desc = await deps.jj.describe({ root: deps.dotfilesRoot, message });
+    if (!desc.ok) {
+      return err(rollback("describe", repoErr(desc.error), await runInverse(inverses)));
+    }
+    inverses.push(jjInverse);
+    const snap = await deps.jj.snapshot({ root: deps.dotfilesRoot });
+    if (!snap.ok) {
+      return err(rollback("describe", repoErr(snap.error), await runInverse(inverses)));
+    }
+    const advanced = await deps.jj.newChange({ root: deps.dotfilesRoot });
+    if (!advanced.ok) {
+      return err(rollback("describe", repoErr(advanced.error), await runInverse(inverses)));
+    }
+    return ok(undefined);
+  }
+
   async function add(absolutePath: string): Promise<Result<TrackedFile, ServiceError>> {
     const target = absolutePath;
     const id = trackedFileId(target);
@@ -168,26 +196,9 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
       },
     });
 
-    // Step 5: jj describe + snapshot. Any jj-side failure replays via
-    // `jj op restore <preTrackOp>`, which is the only true inverse for the
-    // describe → snapshot → new triplet.
-    const jjInverse = jjRestoreInverse(preTrackOp);
-    const desc = await deps.jj.describe({
-      root: deps.dotfilesRoot,
-      message: `track ${rel}`,
-    });
-    if (!desc.ok) {
-      return err(rollback("describe", repoErr(desc.error), await runInverse(inverses)));
-    }
-    inverses.push(jjInverse);
-    const snapJj = await deps.jj.snapshot({ root: deps.dotfilesRoot });
-    if (!snapJj.ok) {
-      return err(rollback("describe", repoErr(snapJj.error), await runInverse(inverses)));
-    }
-    const advanced = await deps.jj.newChange({ root: deps.dotfilesRoot });
-    if (!advanced.ok) {
-      return err(rollback("describe", repoErr(advanced.error), await runInverse(inverses)));
-    }
+    // Step 5: jj describe → snapshot → new (single inverse: op restore preTrackOp).
+    const triplet = await describeAndAdvance(`track ${rel}`, preTrackOp, inverses);
+    if (!triplet.ok) return triplet;
 
     // Step 6: record.
     const file = makeTrackedFile({
@@ -301,24 +312,9 @@ export function createTrackService(deps: TrackServiceDeps): TrackService {
       },
     });
 
-    // Step 6: jj describe + snapshot.
-    const jjInverse = jjRestoreInverse(preTrackOp);
-    const desc = await deps.jj.describe({
-      root: deps.dotfilesRoot,
-      message: `untrack ${rel}`,
-    });
-    if (!desc.ok) {
-      return err(rollback("describe", repoErr(desc.error), await runInverse(inverses)));
-    }
-    inverses.push(jjInverse);
-    const snapJj = await deps.jj.snapshot({ root: deps.dotfilesRoot });
-    if (!snapJj.ok) {
-      return err(rollback("describe", repoErr(snapJj.error), await runInverse(inverses)));
-    }
-    const advanced = await deps.jj.newChange({ root: deps.dotfilesRoot });
-    if (!advanced.ok) {
-      return err(rollback("describe", repoErr(advanced.error), await runInverse(inverses)));
-    }
+    // Step 6: jj describe → snapshot → new.
+    const triplet = await describeAndAdvance(`untrack ${rel}`, preTrackOp, inverses);
+    if (!triplet.ok) return triplet;
 
     // Step 7: record (status -> "untracked").
     const updated: TrackedFile = { ...existing.value, status: "untracked" };

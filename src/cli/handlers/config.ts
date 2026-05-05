@@ -1,6 +1,6 @@
 import { formatServiceError } from "../../lib/format";
 import { KNOWN_OPTIONS } from "../../services/config.service";
-import type { CliDeps } from "../index";
+import type { CliDeps } from "../types";
 
 function coerce(raw: string): { ok: true; value: unknown } | { ok: false; reason: string } {
   if (raw === "true") return { ok: true, value: true };

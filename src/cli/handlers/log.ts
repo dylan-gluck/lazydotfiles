@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { formatServiceError, padRight, relativeAge, truncate } from "../../lib/format";
-import type { CliDeps } from "../index";
+import type { CliDeps } from "../types";
 
 export async function logHandler(rest: readonly string[], deps: CliDeps): Promise<number> {
   let parsed;

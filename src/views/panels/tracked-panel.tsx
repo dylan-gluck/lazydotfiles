@@ -10,7 +10,7 @@ import {
   usePublishPanelBindings,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
-import { summarizeServiceError } from "../components/summarize-error";
+import { PanelError } from "../components/panel-error";
 import { relativeAge } from "../lib/relative-age";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { basename } from "node:path";
@@ -96,13 +96,11 @@ export function TrackedPanel({ model, backupRoot, home, onViewLog }: TrackedPane
 
   if (model.error !== null) {
     return (
-      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} paddingTop={1}>
-        <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
-          Tracked panel error
-        </text>
-        <text fg={t.fg.default}>{summarizeServiceError(model.error)}</text>
-        <text fg={t.fg.muted}>any key to dismiss</text>
-      </box>
+      <PanelError
+        title="Tracked panel error"
+        error={model.error}
+        footer={<text fg={t.fg.muted}>any key to dismiss</text>}
+      />
     );
   }
 

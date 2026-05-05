@@ -1,6 +1,6 @@
 import { relative, resolve } from "node:path";
 import { formatServiceError } from "../../lib/format";
-import type { CliDeps } from "../index";
+import type { CliDeps } from "../types";
 
 export async function addHandler(rest: readonly string[], deps: CliDeps): Promise<number> {
   if (rest.length !== 1) {
