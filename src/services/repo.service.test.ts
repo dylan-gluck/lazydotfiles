@@ -58,6 +58,9 @@ function fakeJj(opts: FakeOpts, state: FakeState): JjRepository {
     logAtOp: async () => ok(null),
     diffSummaryAtOp: async () => ok([]),
     diffAtOp: async () => ok(""),
+    gitRemoteSet: async () => ok(undefined),
+    gitRemoteList: async () => ok([]),
+    bookmarkSet: async () => ok(undefined),
   };
 }
 

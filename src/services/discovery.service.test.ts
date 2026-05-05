@@ -14,7 +14,13 @@ function makeConfig(overrides: Partial<Config["discovery"]> = {}): Config {
       exclude: [],
       ...overrides,
     },
-    options: { vcs: "jj", auto_commit: true, auto_sync: true, auto_sync_interval: "daily" },
+    options: {
+      vcs: "jj",
+      auto_commit: true,
+      auto_sync: true,
+      auto_sync_interval: "daily",
+      remote: "",
+    },
     experimental: { detect_api_keys: false },
   };
 }

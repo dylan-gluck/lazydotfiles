@@ -8,7 +8,7 @@ const SECTION_ORDER = ["path", "discovery", "options", "experimental"] as const;
 const KEY_ORDER: Record<(typeof SECTION_ORDER)[number], readonly string[]> = {
   path: ["home", "dotfiles", "backup"],
   discovery: ["auto_track", "include", "exclude"],
-  options: ["vcs", "auto_commit", "auto_sync", "auto_sync_interval"],
+  options: ["vcs", "auto_commit", "auto_sync", "auto_sync_interval", "remote"],
   experimental: ["detect_api_keys"],
 };
 
@@ -43,7 +43,9 @@ export function serializeConfig(config: Config): string {
     const keys = KEY_ORDER[section];
     const obj = config[section] as Record<string, unknown>;
     for (const key of keys) {
-      lines.push(`${key} = ${formatValue(obj[key])}`);
+      const value = obj[key];
+      if (value === undefined) continue;
+      lines.push(`${key} = ${formatValue(value)}`);
     }
   }
   return `${lines.join("\n")}\n`;

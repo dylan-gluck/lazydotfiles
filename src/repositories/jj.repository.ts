@@ -35,13 +35,36 @@ export interface JjRepository {
   diffAtOp(opts: { root: string; opId: string }): Promise<Result<string, RepoError>>;
   status(opts: { root: string }): Promise<Result<SyncState, RepoError>>;
   gitFetch(opts: { root: string }): Promise<Result<void, RepoError>>;
-  gitPush(opts: { root: string }): Promise<Result<void, RepoError>>;
+  gitPush(opts: { root: string; bookmark?: string }): Promise<Result<void, RepoError>>;
+  /**
+   * Create or move a bookmark to `revision`. `jj bookmark set` is idempotent
+   * for both — it creates new bookmarks and advances/rewinds existing ones
+   * (with `--allow-backwards`).
+   */
+  bookmarkSet(opts: {
+    root: string;
+    name: string;
+    revision: string;
+  }): Promise<Result<void, RepoError>>;
   /** Counts of changes ahead/behind of the tracked remote bookmarks. */
   aheadBehind(opts: {
     root: string;
   }): Promise<Result<{ ahead: number; behind: number }, RepoError>>;
   /** Conflicted paths (dotfiles-repo-relative) per `jj resolve --list`. */
   listConflicts(opts: { root: string }): Promise<Result<readonly string[], RepoError>>;
+  /**
+   * Idempotently configure a named git remote. Adds when missing, updates URL
+   * when present. Defaults `name` to `origin`.
+   */
+  gitRemoteSet(opts: {
+    root: string;
+    url: string;
+    name?: string;
+  }): Promise<Result<void, RepoError>>;
+  /** List configured git remotes as `[{ name, url }]`. */
+  gitRemoteList(opts: {
+    root: string;
+  }): Promise<Result<ReadonlyArray<{ name: string; url: string }>, RepoError>>;
 }
 
 const US = "\u001f"; // ASCII unit separator — never appears in legitimate jj output we parse.
@@ -330,8 +353,23 @@ export function createJjRepository(): JjRepository {
       return r.ok ? ok(undefined) : err(r.error);
     },
 
-    async gitPush({ root }) {
-      const r = await runJj(["git", "push"], { cwd: root });
+    async gitPush({ root, bookmark }) {
+      const args = ["git", "push"];
+      if (bookmark !== undefined) {
+        // `jj git push --bookmark <name>` auto-tracks the matching remote
+        // bookmark on first push, which is what we want for a fresh repo
+        // whose `main` has never been pushed.
+        args.push("--bookmark", bookmark);
+      }
+      const r = await runJj(args, { cwd: root });
+      return r.ok ? ok(undefined) : err(r.error);
+    },
+
+    async bookmarkSet({ root, name, revision }) {
+      const r = await runJj(
+        ["bookmark", "set", name, "-r", revision, "--allow-backwards"],
+        { cwd: root },
+      );
       return r.ok ? ok(undefined) : err(r.error);
     },
 
@@ -398,6 +436,34 @@ export function createJjRepository(): JjRepository {
         }
       }
       return ok(parseStatus(s.value.stdout, remote));
+    },
+
+    async gitRemoteList({ root }) {
+      const r = await runJj(["git", "remote", "list"], { cwd: root });
+      if (!r.ok) return err(r.error);
+      const out: { name: string; url: string }[] = [];
+      for (const raw of r.value.stdout.split("\n")) {
+        const line = raw.trim();
+        if (line.length === 0) continue;
+        const space = line.indexOf(" ");
+        if (space === -1) continue;
+        out.push({ name: line.slice(0, space), url: line.slice(space + 1).trim() });
+      }
+      return ok(out);
+    },
+
+    async gitRemoteSet({ root, url, name }) {
+      const remoteName = name ?? "origin";
+      const list = await runJj(["git", "remote", "list"], { cwd: root });
+      if (!list.ok) return err(list.error);
+      const exists = list.value.stdout
+        .split("\n")
+        .some((l) => l.startsWith(`${remoteName} `) || l === remoteName);
+      const args = exists
+        ? ["git", "remote", "set-url", remoteName, url]
+        : ["git", "remote", "add", remoteName, url];
+      const r = await runJj(args, { cwd: root });
+      return r.ok ? ok(undefined) : err(r.error);
     },
   };
 }

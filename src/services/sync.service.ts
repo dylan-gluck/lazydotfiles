@@ -31,6 +31,12 @@ export interface SyncServiceDeps {
   readonly root: string;
   readonly editor: EditorRunner;
   readonly now?: () => Date;
+  /**
+   * Bookmark advanced to `@-` before each push and used as the push target.
+   * `jj git push` only pushes bookmarks; without one nothing reaches the
+   * remote even though jj exits 0. Defaults to `main`.
+   */
+  readonly pushBookmark?: string;
 }
 
 function repoErr(cause: RepoError): ServiceError {
@@ -55,6 +61,16 @@ function isSyncOp(description: string): boolean {
 
 export function createSyncService(deps: SyncServiceDeps): SyncService {
   const now = deps.now ?? (() => new Date());
+  const bookmark = deps.pushBookmark ?? "main";
+
+  /**
+   * Advance the push bookmark to `@-` so `jj git push` has something to send.
+   * Best-effort: an error here (e.g. `@-` is the root commit, no commits yet)
+   * is non-fatal; the subsequent push will surface a clearer error if needed.
+   */
+  async function advancePushBookmark(): Promise<void> {
+    await deps.jj.bookmarkSet({ root: deps.root, name: bookmark, revision: "@-" });
+  }
 
   async function lastSyncFromOpLog(): Promise<string | null> {
     const ops = await deps.jj.opLog({ root: deps.root, limit: 50 });
@@ -110,7 +126,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     },
 
     async push() {
-      const r = await deps.jj.gitPush({ root: deps.root });
+      await advancePushBookmark();
+      const r = await deps.jj.gitPush({ root: deps.root, bookmark });
       if (!r.ok) return err(repoErr(r.error));
       return outcome(true);
     },
@@ -124,7 +141,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       if (post.value.conflicts.length > 0) {
         return ok({ state: post.value, conflicts: post.value.conflicts });
       }
-      const pushed = await deps.jj.gitPush({ root: deps.root });
+      await advancePushBookmark();
+      const pushed = await deps.jj.gitPush({ root: deps.root, bookmark });
       if (!pushed.ok) return err(repoErr(pushed.error));
       return outcome(true);
     },

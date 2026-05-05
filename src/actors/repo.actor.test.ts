@@ -112,6 +112,7 @@ describe("repoActor (effect)", () => {
       dirty: async () => ok(true),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
+      setRemote: async () => ok(undefined),
     };
     const services = {
       home: "/h",
@@ -160,6 +161,7 @@ describe("repoActor (effect)", () => {
       dirty: async () => ok(false),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
+      setRemote: async () => ok(undefined),
     };
     const fakeRestore = {
       restoreToOp: async () => ok({ rematerialized: [] }),

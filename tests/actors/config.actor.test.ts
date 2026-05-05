@@ -52,6 +52,7 @@ function makeServices(config: ConfigService): Services {
       dirty: async () => ok(false),
       restoreOp: async () => ok(undefined),
       trackedFiles: async () => ok([]),
+      setRemote: async () => ok(undefined),
     },
     discovery: {
       scan: async () => ok({ queued: [], autoTracked: [] }),

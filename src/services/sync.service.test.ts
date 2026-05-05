@@ -21,6 +21,7 @@ interface FakeCalls {
   fetch: number;
   push: number;
   snapshot: number;
+  bookmarkSet: number;
 }
 
 function fakeJj(opts: FakeOpts, calls: FakeCalls): JjRepository {
@@ -59,6 +60,12 @@ function fakeJj(opts: FakeOpts, calls: FakeCalls): JjRepository {
       calls.push++;
       return opts.pushErr ? err(opts.pushErr) : ok(undefined);
     },
+    gitRemoteSet: async () => ok(undefined),
+    gitRemoteList: async () => ok([]),
+    bookmarkSet: async () => {
+      calls.bookmarkSet++;
+      return ok(undefined);
+    },
   };
 }
 
@@ -70,7 +77,7 @@ const NOW = new Date("2026-05-01T12:00:00Z");
 
 describe("syncService.state", () => {
   test("merges status, aheadBehind, listConflicts into SyncState", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({
       jj: fakeJj({ aheadBehind: { ahead: 3, behind: 1 }, conflicts: [".zshrc"] }, calls),
       root: "/d",
@@ -88,7 +95,7 @@ describe("syncService.state", () => {
 
 describe("syncService.fetch", () => {
   test("ok stamps lastSyncAt with injected now()", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({ jj: fakeJj({}, calls), root: "/d", editor, now: () => NOW });
     const r = await svc.fetch();
     expect(r.ok).toBe(true);
@@ -99,7 +106,7 @@ describe("syncService.fetch", () => {
   });
 
   test("fetch error bubbles as Repository and does not call push", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({
       jj: fakeJj(
         {
@@ -121,7 +128,7 @@ describe("syncService.fetch", () => {
 
 describe("syncService.sync", () => {
   test("runs fetch then push when no conflicts", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({ jj: fakeJj({}, calls), root: "/d", editor, now: () => NOW });
     const r = await svc.sync();
     expect(r.ok).toBe(true);
@@ -130,7 +137,7 @@ describe("syncService.sync", () => {
   });
 
   test("skips push when fetch produced conflicts", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({
       jj: fakeJj({ conflicts: [".zshrc"] }, calls),
       root: "/d",
@@ -145,7 +152,7 @@ describe("syncService.sync", () => {
   });
 
   test("does not call push when fetch fails", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const svc = createSyncService({
       jj: fakeJj(
         {
@@ -172,7 +179,7 @@ describe("syncService.resolve", () => {
         target,
         ["a", "<<<<<<< ours", "OURS", "=======", "THEIRS", ">>>>>>> theirs", "z"].join("\n"),
       );
-      const calls = { fetch: 0, push: 0, snapshot: 0 };
+      const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
       const svc = createSyncService({ jj: fakeJj({}, calls), root: dir, editor, now: () => NOW });
       const r = await svc.resolve({ path: "f.txt", choice: "ours" });
       expect(r.ok).toBe(true);
@@ -192,7 +199,7 @@ describe("syncService.resolve", () => {
         target,
         ["a", "<<<<<<< ours", "OURS", "=======", "THEIRS", ">>>>>>> theirs", "z"].join("\n"),
       );
-      const calls = { fetch: 0, push: 0, snapshot: 0 };
+      const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
       const svc = createSyncService({ jj: fakeJj({}, calls), root: dir, editor, now: () => NOW });
       const r = await svc.resolve({ path: "f.txt", choice: "theirs" });
       expect(r.ok).toBe(true);
@@ -204,7 +211,7 @@ describe("syncService.resolve", () => {
   });
 
   test("edit invokes editor.run with absolute path", async () => {
-    const calls = { fetch: 0, push: 0, snapshot: 0 };
+    const calls = { fetch: 0, push: 0, snapshot: 0, bookmarkSet: 0 };
     const invoked: { value: string | null } = { value: null };
     const ed: EditorRunner = {
       run: async (p) => {

@@ -5,6 +5,7 @@
   "module": "src/index.tsx",
   "scripts": {
     "dev": "bun run generate-routes && bun run --watch src/index.tsx",
+    "build": "bun run generate-routes && bun build --compile --outfile dist/ldf bin/ldf.ts",
     "check": "bun lint:fix && bun fmt",
     "check:layers": "bun scripts/check-layers.ts",
     "test": "bun test",

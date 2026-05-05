@@ -1,4 +1,14 @@
-import { array, boolean, type Infer, literal, object, type Schema, string, union } from "./schema";
+import {
+  array,
+  boolean,
+  type Infer,
+  literal,
+  object,
+  optional,
+  type Schema,
+  string,
+  union,
+} from "./schema";
 
 export const VcsKindSchema: Schema<"jj"> = literal("jj");
 export type VcsKind = Infer<typeof VcsKindSchema>;
@@ -29,6 +39,7 @@ export const OptionsSchema = object({
   auto_commit: boolean(),
   auto_sync: boolean(),
   auto_sync_interval: IntervalSchema,
+  remote: optional(string()),
 });
 export type Options = Infer<typeof OptionsSchema>;
 
@@ -66,6 +77,7 @@ vcs = "jj"
 auto_commit = true
 auto_sync = true
 auto_sync_interval = "daily"
+remote = ""
 
 [experimental]
 detect_api_keys = true
@@ -89,6 +101,7 @@ export function defaultConfig(): Config {
       auto_commit: true,
       auto_sync: true,
       auto_sync_interval: "daily",
+      remote: "",
     },
     experimental: {
       detect_api_keys: true,

@@ -34,6 +34,9 @@ function fakeJj(over: Partial<JjRepository>): JjRepository {
     gitPush: async () => ok(undefined),
     aheadBehind: async () => ok({ ahead: 0, behind: 0 }),
     listConflicts: async () => ok([]),
+    gitRemoteSet: async () => ok(undefined),
+    gitRemoteList: async () => ok([]),
+    bookmarkSet: async () => ok(undefined),
     ...over,
   };
 }

@@ -12,6 +12,13 @@ export interface RepoService {
   dirty(): Promise<Result<boolean, ServiceError>>;
   restoreOp(id: string): Promise<Result<void, ServiceError>>;
   trackedFiles(): Promise<Result<readonly TrackedFile[], ServiceError>>;
+  /**
+   * Idempotently configure the dotfiles repo's `origin` remote (or the named
+   * one). Adds when missing, sets URL otherwise.
+   */
+  setRemote(opts: { root?: string; url: string; name?: string }): Promise<
+    Result<void, ServiceError>
+  >;
 }
 
 export function createRepoService(deps: {
@@ -53,6 +60,11 @@ export function createRepoService(deps: {
     async trackedFiles() {
       const r = await deps.tracked.list();
       return r.ok ? ok(r.value) : err({ tag: "Repository", cause: r.error });
+    },
+
+    async setRemote({ root, url, name }) {
+      const r = await deps.jj.gitRemoteSet({ root: root ?? deps.root, url, name });
+      return r.ok ? ok(undefined) : err({ tag: "Repository", cause: r.error });
     },
   };
 }

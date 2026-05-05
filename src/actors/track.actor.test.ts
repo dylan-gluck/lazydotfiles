@@ -35,26 +35,46 @@ describe("trackReducer", () => {
     expect(out.effects).toHaveLength(1);
   });
 
-  test("add while inFlight is no-op", () => {
-    const busy: TrackState = { inFlight: { kind: "add", path: "/x" }, lastError: null };
+  test("add while inFlight queues, no event, no effect", () => {
+    const busy: TrackState = {
+      inFlight: { kind: "add", path: "/x" },
+      pending: [],
+      lastError: null,
+    };
     const out = trackReducer(busy, { kind: "add", payload: { path: "/y" } });
-    expect(out.state).toEqual(busy);
+    expect(out.state.inFlight).toEqual({ kind: "add", path: "/x" });
+    expect(out.state.pending).toEqual([{ kind: "add", path: "/y" }]);
     expect(out.events).toEqual([]);
     expect(out.effects).toEqual([]);
   });
 
-  test("addOk clears inFlight and emits tracked", () => {
+  test("addOk drains the queue: emits tracked + dispatches next effect", () => {
+    const queued: TrackState = {
+      inFlight: { kind: "add", path: "/h/.zshrc" },
+      pending: [{ kind: "add", path: "/h/.config/git/config" }],
+      lastError: null,
+    };
+    const out = trackReducer(queued, { kind: "addOk", payload: { file } });
+    expect(out.state.inFlight).toEqual({ kind: "add", path: "/h/.config/git/config" });
+    expect(out.state.pending).toEqual([]);
+    expect(out.events.map((e) => e.kind)).toEqual(["tracked"]);
+    expect(out.effects).toHaveLength(1);
+  });
+
+  test("addOk clears inFlight when queue is empty", () => {
     const out = trackReducer(
-      { inFlight: { kind: "add", path: "/h/.zshrc" }, lastError: null },
+      { inFlight: { kind: "add", path: "/h/.zshrc" }, pending: [], lastError: null },
       { kind: "addOk", payload: { file } },
     );
     expect(out.state.inFlight).toBeNull();
+    expect(out.state.pending).toEqual([]);
     expect(out.events.map((e) => e.kind)).toEqual(["tracked"]);
+    expect(out.effects).toEqual([]);
   });
 
   test("addFailed records error and emits addFailed", () => {
     const out = trackReducer(
-      { inFlight: { kind: "add", path: "/h/.zshrc" }, lastError: null },
+      { inFlight: { kind: "add", path: "/h/.zshrc" }, pending: [], lastError: null },
       {
         kind: "addFailed",
         payload: { path: "/h/.zshrc", error: { tag: "NotFound", resource: "x", id: "y" } },
@@ -75,7 +95,7 @@ describe("trackReducer", () => {
 
   test("removeFailed emits removeFailed", () => {
     const out = trackReducer(
-      { inFlight: { kind: "remove", path: "/x" }, lastError: null },
+      { inFlight: { kind: "remove", path: "/x" }, pending: [], lastError: null },
       {
         kind: "removeFailed",
         payload: { path: "/x", error: { tag: "NotFound", resource: "a", id: "b" } },

@@ -14,6 +14,7 @@ export const KNOWN_OPTIONS: ReadonlySet<string> = new Set([
   "options.auto_commit",
   "options.auto_sync",
   "options.auto_sync_interval",
+  "options.remote",
   "experimental.detect_api_keys",
 ]);
 

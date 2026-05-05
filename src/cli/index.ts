@@ -2,6 +2,7 @@ import type { Services } from "../composition/services";
 import { addHandler } from "./handlers/add";
 import { configHandler } from "./handlers/config";
 import { logHandler } from "./handlers/log";
+import { remoteHandler } from "./handlers/remote";
 import { removeHandler } from "./handlers/remove";
 import { statusHandler } from "./handlers/status";
 import { syncHandler } from "./handlers/sync";
@@ -24,7 +25,7 @@ export interface CliDeps {
   readonly launchTui?: () => Promise<number>;
 }
 
-export type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync";
+export type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync" | "remote";
 
 type Handler = (rest: readonly string[], deps: CliDeps) => Promise<number>;
 
@@ -35,6 +36,7 @@ const HANDLERS: Record<Subcommand, Handler> = {
   rm: removeHandler,
   config: configHandler,
   sync: syncHandler,
+  remote: remoteHandler,
 };
 
 const KNOWN: ReadonlySet<string> = new Set(Object.keys(HANDLERS));
@@ -47,6 +49,7 @@ const USAGE = `usage:
   ldf rm <path>             untrack a file
   ldf config [<key> [<value>]]
   ldf sync                  fetch + push once
+  ldf remote [<url>]        get/set git remote (persists to config.toml)
 `;
 
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<number> {

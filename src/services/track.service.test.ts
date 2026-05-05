@@ -75,6 +75,9 @@ function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): Fa
       ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
     aheadBehind: async () => ok({ ahead: 0, behind: 0 }),
     listConflicts: async () => ok([]),
+    gitRemoteSet: async () => ok(undefined),
+    gitRemoteList: async () => ok([]),
+    bookmarkSet: async () => ok(undefined),
   };
   return Object.assign(repo, { calls: callsArr, callsArr });
 }
