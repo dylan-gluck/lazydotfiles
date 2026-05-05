@@ -37,25 +37,19 @@ const NAV_SLOTS: readonly NavSlot[] = [
  * publish their label and bindings via {@link usePublishPanelLabel} and
  * {@link usePublishPanelBindings}.
  */
-export function AppShell({
-  currentPath,
-  helpOpen,
-  onCloseHelp,
-  children,
-}: AppShellProps): ReactNode {
+export function AppShell({ helpOpen, onCloseHelp, children }: AppShellProps): ReactNode {
   const t = useTheme();
   const bindings = useActivePanelBindings();
   const label = useActivePanelLabel();
   return (
     <box flexDirection="column" flexGrow={1} backgroundColor={t.bg.default}>
-      <Breadcrumb currentPath={currentPath} />
-      <box flexGrow={1} overflow="hidden">
+      <box flexGrow={1} flexShrink={1} overflow="hidden">
         {children}
       </box>
       {helpOpen === true ? (
         <HelpDrawer activeLabel={label} activeBindings={bindings} onClose={onCloseHelp ?? noop} />
       ) : (
-        <Footer label={label} bindings={bindings} currentPath={currentPath} />
+        <Footer label={label} bindings={bindings} />
       )}
     </box>
   );
@@ -66,10 +60,16 @@ export function AppShell({
  * see the spine of the app without pressing `?`. The active slot wears the
  * cursor glyph plus the-mark; the rest are subtle. Single line, no chrome.
  */
-function Breadcrumb({ currentPath }: { readonly currentPath: string }): ReactNode {
+function _Breadcrumb({ currentPath }: { readonly currentPath: string }): ReactNode {
   const t = useTheme();
   return (
-    <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1}>
+    <box
+      flexDirection="row"
+      paddingLeft={1}
+      paddingRight={1}
+      border={["bottom"]}
+      borderColor={t.fg.muted}
+    >
       {NAV_SLOTS.flatMap((slot, i) => {
         const active = slot.path === currentPath;
         const segs: ReactNode[] = [];
@@ -82,14 +82,16 @@ function Breadcrumb({ currentPath }: { readonly currentPath: string }): ReactNod
         }
         if (active) {
           segs.push(
-            <text key={`k-${i}`} fg={t.fg.focus} attributes={TextAttributes.BOLD}>
-              {`›${slot.key} ${slot.label}`}
+            <text key={`k-${i}`}>
+              <span fg={t.fg.focus}>{`${slot.key} `}</span>
+              <span fg={t.fg.muted}>{`${slot.label}`}</span>
             </text>,
           );
         } else {
           segs.push(
-            <text key={`k-${i}`} fg={t.fg.subtle}>
-              {`${slot.key} ${slot.label}`}
+            <text key={`k-${i}`}>
+              <span fg={t.fg.focus}>{`${slot.key} `}</span>
+              <span fg={t.fg.muted}>{`${slot.label}`}</span>
             </text>,
           );
         }
@@ -104,24 +106,22 @@ function noop(): void {}
 function Footer({
   label,
   bindings,
-  currentPath,
 }: {
   readonly label: string | null;
   readonly bindings: readonly PanelBinding[];
-  readonly currentPath: string;
 }): ReactNode {
   const t = useTheme();
   const items: readonly PanelBinding[] = [...bindings, HELP_HINT];
   return (
-    <box height={1} flexDirection="row" alignItems="center">
+    <box flexDirection="row" paddingLeft={1} paddingRight={1}>
       {label !== null ? (
         <box backgroundColor={t.fg.focus} paddingLeft={1} paddingRight={1}>
-          <text fg={t.bg.default} attributes={TextAttributes.BOLD}>
+          <text fg={t.bg.surface} attributes={TextAttributes.BOLD}>
             {label}
           </text>
         </box>
       ) : null}
-      <box flexGrow={1} flexShrink={1} flexDirection="row" overflow="hidden" paddingLeft={1}>
+      <box flexGrow={1} flexShrink={1} flexDirection="row" overflow="hidden" paddingLeft={2}>
         {items.flatMap((b, i) => {
           const segs: ReactNode[] = [];
           if (i > 0) {
@@ -144,7 +144,6 @@ function Footer({
           return segs;
         })}
       </box>
-      {currentPath.length > 0 ? <text fg={t.fg.subtle}>{`${currentPath} `}</text> : null}
     </box>
   );
 }

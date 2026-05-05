@@ -1,4 +1,4 @@
-import { type ColorInput, TextAttributes } from "@opentui/core";
+import { type ColorInput } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { type ReactNode, useState } from "react";
 import type { HomeQueueGroup, UseHomePanel } from "../../controllers/home.controller";
@@ -120,9 +120,8 @@ export function HomePanel({
   return (
     <box flexDirection="column" flexGrow={1}>
       <Header model={model} summary={headerSummary} />
-      <Rule />
 
-      <box flexDirection="column" flexGrow={1} overflow="hidden" paddingTop={t.space.sm}>
+      <box flexDirection="column" flexGrow={1} flexShrink={0} overflow="hidden">
         {/* Tracked section */}
         <SectionRow margin={`${model.trackedCount} tracked`} label="tracked" />
         {model.tracked.length === 0 ? (
@@ -234,35 +233,25 @@ function Header({
   const repoLabel = truncateToWidth(tildify(model.repoRoot, model.home), 40);
   return (
     <box
+      flexShrink={0}
       flexDirection="row"
       gap={t.space.md}
       paddingLeft={1}
       paddingRight={1}
       justifyContent="space-between"
+      border={["bottom"]}
+      borderColor={t.fg.muted}
     >
       <box flexDirection="row" gap={t.space.sm}>
-        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
-          {repoLabel}
-        </text>
+        <text fg={t.fg.heading}>{repoLabel}</text>
         <text fg={t.fg.subtle}>·</text>
         <text fg={t.fg.muted}>{model.branchSummary}</text>
       </box>
       <box flexDirection="row" gap={t.space.sm}>
-        <text fg={model.dirty ? t.fg.danger : t.fg.success} attributes={TextAttributes.BOLD}>
-          {model.dirty ? "dirty" : "clean"}
-        </text>
+        <text fg={model.dirty ? t.fg.danger : t.fg.success}>{model.dirty ? "dirty" : "clean"}</text>
         <text fg={t.fg.subtle}>·</text>
         <text fg={t.fg.muted}>{summary}</text>
       </box>
-    </box>
-  );
-}
-
-function Rule(): ReactNode {
-  const t = useTheme();
-  return (
-    <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1} overflow="hidden">
-      <text fg={t.fg.subtle}>{"─".repeat(160)}</text>
     </box>
   );
 }
@@ -271,7 +260,7 @@ function DimRule(): ReactNode {
   const t = useTheme();
   return (
     <box height={1} flexDirection="row" paddingLeft={1} paddingRight={1} overflow="hidden">
-      <text fg={t.fg.subtle}>{"·  ".repeat(60)}</text>
+      <text fg={t.fg.subtle}>{"· ".repeat(200)}</text>
     </box>
   );
 }
@@ -287,9 +276,7 @@ function SectionRow({ margin, label }: SectionRowProps): ReactNode {
     <box flexDirection="row" paddingLeft={1} paddingRight={1}>
       <text fg={t.fg.muted}>{margin.padStart(MARGIN_WIDTH)}</text>
       <text fg={t.fg.muted}>{"  "}</text>
-      <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
-        {label}
-      </text>
+      <text fg={t.fg.heading}>{label}</text>
     </box>
   );
 }

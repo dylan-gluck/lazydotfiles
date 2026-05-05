@@ -23,8 +23,6 @@ function Log() {
   const repo = useActor<unknown, RepoMessage>(REPO_ACTOR_ID);
   useEffect(() => {
     repo.send({ kind: "refresh", payload: undefined });
-    // mount-only refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return <LogPanel model={model} />;
 }

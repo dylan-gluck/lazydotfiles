@@ -16,7 +16,6 @@ function Tracked() {
   useEffect(() => {
     repo.send({ kind: "refresh", payload: undefined });
     // mount-only refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const onViewLog = useCallback(
     (file: string) => {

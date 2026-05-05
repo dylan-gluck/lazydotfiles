@@ -65,12 +65,12 @@ export interface Tokens {
 const ansiFg = {
   default: RGBA.defaultForeground(),
   heading: RGBA.defaultForeground(),
-  focus: RGBA.fromIndex(11),
-  action: RGBA.fromIndex(10),
+  focus: RGBA.fromIndex(13),
+  action: RGBA.fromIndex(14),
   muted: RGBA.fromIndex(8),
   subtle: RGBA.fromIndex(8),
   success: RGBA.fromIndex(10),
-  danger: RGBA.fromIndex(9),
+  danger: RGBA.fromIndex(3),
 } as const;
 
 const ansiFgWithAliases = {

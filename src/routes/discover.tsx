@@ -14,8 +14,6 @@ function Discover() {
   const config = useActor<ConfigState>(CONFIG_ACTOR_ID);
   useEffect(() => {
     if (model.status === "idle") model.rescan();
-    // model.status / model.rescan are stable; we only want this on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const paths = config.state.config?.path;
   return (

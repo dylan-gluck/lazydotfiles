@@ -34,12 +34,6 @@ function chunkColumnMajor<T>(items: readonly T[], cols: number): T[][] {
   return out;
 }
 
-function maxKeyWidth(rows: readonly HelpRow[]): number {
-  let w = 0;
-  for (const r of rows) if (r.key.length > w) w = r.key.length;
-  return w;
-}
-
 /**
  * Bottom-anchored help drawer: replaces the AppShell footer when help is open.
  * Two sections — the active panel's bindings and the global keymap — each laid
@@ -61,16 +55,18 @@ export function HelpDrawer({ activeLabel, activeBindings, onClose }: HelpDrawerP
   return (
     <box
       flexDirection="column"
-      backgroundColor={t.bg.surface}
-      paddingLeft={2}
-      paddingRight={2}
-      paddingTop={1}
-      paddingBottom={1}
+      backgroundColor={t.bg.default}
+      padding={1}
+      border={["top"]}
+      borderColor={t.fg.muted}
+      flexShrink={0}
     >
-      {activeRows.length > 0 ? <Section title={activeLabel ?? "Panel"} rows={activeRows} /> : null}
-      {activeRows.length > 0 ? <box height={1} /> : null}
-      <Section title="Global" rows={globalRows} />
-      <box height={1} />
+      <box flexDirection="row" gap={1}>
+        {activeRows.length > 0 ? (
+          <Section title={activeLabel ?? "Panel"} rows={activeRows} />
+        ) : null}
+        <Section title="global" rows={globalRows} />
+      </box>
       <CloseHint />
     </box>
   );
@@ -86,17 +82,16 @@ function Section({
   const t = useTheme();
   const columns = chunkColumnMajor(rows, COLUMNS);
   return (
-    <box flexDirection="column">
-      <text fg={t.fg.focus} attributes={TextAttributes.BOLD}>
+    <box flexDirection="column" paddingBottom={1} flexGrow={1} flexShrink={0}>
+      <text fg={t.fg.default} attributes={TextAttributes.BOLD}>
         {title}
       </text>
       <box flexDirection="row" gap={t.space.lg}>
         {columns.map((col, ci) => {
-          const keyWidth = maxKeyWidth(col);
           return (
             <box key={ci} flexDirection="column">
               {col.map((row, ri) => (
-                <Row key={ri} row={row} keyWidth={keyWidth} />
+                <Row key={ri} row={row} />
               ))}
             </box>
           );
@@ -106,11 +101,11 @@ function Section({
   );
 }
 
-function Row({ row, keyWidth }: { readonly row: HelpRow; readonly keyWidth: number }): ReactNode {
+function Row({ row }: { readonly row: HelpRow }): ReactNode {
   const t = useTheme();
   return (
     <box flexDirection="row">
-      <text fg={t.fg.focus}>{row.key.padEnd(keyWidth)}</text>
+      <text fg={t.fg.focus}>{row.key}</text>
       <text fg={t.fg.muted}>{` ${row.desc}`}</text>
     </box>
   );
