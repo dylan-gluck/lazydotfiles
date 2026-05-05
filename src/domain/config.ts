@@ -24,8 +24,11 @@ export const PathsSchema = object({
   home: string(),
   dotfiles: string(),
   backup: string(),
+  cache: optional(string()),
 });
 export type Paths = Infer<typeof PathsSchema>;
+
+export const DEFAULT_CACHE_PATH = "$HOME/.cache/lazydotfiles";
 
 export const DiscoverySchema = object({
   auto_track: boolean(),
@@ -66,6 +69,7 @@ export const DEFAULT_CONFIG_TEXT = `[path]
 home = "$HOME"
 dotfiles = "$HOME/dotfiles"
 backup = "$HOME/.dotfiles.bak"
+cache = "$HOME/.cache/lazydotfiles"
 
 [discovery]
 auto_track = true
@@ -90,6 +94,7 @@ export function defaultConfig(): Config {
       home: "$HOME",
       dotfiles: "$HOME/dotfiles",
       backup: "$HOME/.dotfiles.bak",
+      cache: DEFAULT_CACHE_PATH,
     },
     discovery: {
       auto_track: true,

@@ -18,11 +18,81 @@ const c1 = makeCandidate({ path: "/h/.config/fish/config.fish", kind: "file", re
 const c2 = makeCandidate({ path: "/h/.config/git/config", kind: "file", reason: "include" });
 
 describe("discoveryReducer", () => {
-  test("rescan transitions to scanning, emits progress, dispatches one effect", () => {
+  test("rescan from cold transitions to scanning and runs an effect", () => {
     const out = discoveryReducer(initialDiscoveryState, { kind: "rescan", payload: undefined });
     expect(out.state.status).toBe("scanning");
+    expect(out.state.refreshing).toBe(true);
     expect(out.events.map((e) => e.kind)).toEqual(["scanProgress"]);
     expect(out.effects).toHaveLength(1);
+  });
+
+  test("rescan from a primed (ready) state stays ready while refreshing", () => {
+    const ready: DiscoveryState = {
+      ...initialDiscoveryState,
+      status: "ready",
+      queue: [c1],
+      scannedAt: "2026-05-01T00:00:00.000Z",
+    };
+    const out = discoveryReducer(ready, { kind: "rescan", payload: undefined });
+    expect(out.state.status).toBe("ready");
+    expect(out.state.refreshing).toBe(true);
+    expect(out.state.queue).toEqual([c1]);
+    expect(out.effects).toHaveLength(1);
+  });
+
+  test("primed hydrates from cache without going through scanning, then refreshes", () => {
+    const out = discoveryReducer(initialDiscoveryState, {
+      kind: "primed",
+      payload: { queued: [c1, c2], autoTracked: [], scannedAt: "2026-01-01T00:00:00.000Z" },
+    });
+    expect(out.state.status).toBe("ready");
+    expect(out.state.refreshing).toBe(true);
+    expect(out.state.queue).toHaveLength(2);
+    expect(out.state.scannedAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(out.events.map((e) => e.kind)).toEqual(["scanProgress", "candidateAdded"]);
+    expect(out.effects).toHaveLength(1);
+  });
+
+  test("cacheMiss falls through to a real scan", () => {
+    const out = discoveryReducer(initialDiscoveryState, {
+      kind: "cacheMiss",
+      payload: undefined,
+    });
+    expect(out.state.status).toBe("scanning");
+    expect(out.state.refreshing).toBe(true);
+    expect(out.effects).toHaveLength(1);
+  });
+
+  test("scanOk clears refreshing and stamps scannedAt", () => {
+    const refreshing: DiscoveryState = {
+      ...initialDiscoveryState,
+      status: "ready",
+      queue: [c1],
+      refreshing: true,
+    };
+    const out = discoveryReducer(refreshing, {
+      kind: "scanOk",
+      payload: { queued: [c2], autoTracked: [] },
+    });
+    expect(out.state.refreshing).toBe(false);
+    expect(out.state.scannedAt).not.toBeNull();
+    expect(out.state.queue).toEqual([c2]);
+  });
+
+  test("scanFailed during background refresh keeps the cached queue ready", () => {
+    const refreshing: DiscoveryState = {
+      ...initialDiscoveryState,
+      status: "ready",
+      queue: [c1],
+      refreshing: true,
+    };
+    const out = discoveryReducer(refreshing, {
+      kind: "scanFailed",
+      payload: { error: { tag: "NotFound", resource: "Config", id: "/x" } },
+    });
+    expect(out.state.status).toBe("ready");
+    expect(out.state.refreshing).toBe(false);
+    expect(out.state.queue).toEqual([c1]);
   });
 
   test("scanOk replaces queue, emits scanProgress and candidateAdded include", () => {
@@ -95,19 +165,21 @@ describe("discovery actor (effect)", () => {
   test("rescan eventually moves to ready with the fake's queue", async () => {
     const fakeDiscovery: DiscoveryService = {
       scan: async () => ok({ queued: [c1, c2], autoTracked: [] }),
+      loadCached: async () => ok(null),
       expandSiblings: async () => ok([]),
       decide: (c, d) => ({ ...c, status: d === "accept" ? "accepted" : "pending" }),
     };
     const fakeConfig = {
       loadOrInit: async () =>
         ok({
-          path: { home: "/h", dotfiles: "/h/d", backup: "/h/b" },
+          path: { home: "/h", dotfiles: "/h/d", backup: "/h/b", cache: "/h/c" },
           discovery: { auto_track: false, include: [], exclude: [] },
           options: {
             vcs: "jj" as const,
             auto_commit: true,
             auto_sync: false,
             auto_sync_interval: "daily" as const,
+            remote: undefined,
           },
           experimental: { detect_api_keys: false },
         }),

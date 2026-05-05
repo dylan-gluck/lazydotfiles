@@ -27,8 +27,15 @@ export async function statusHandler(_rest: readonly string[], deps: CliDeps): Pr
   const cfgForScan = services.config.current();
   let queueCount: number | "?" = "?";
   if (cfgForScan !== null) {
-    const scan = await services.discovery.scan(cfgForScan);
-    if (scan.ok) queueCount = scan.value.queued.length;
+    // Prefer the cached snapshot — a fresh scan can take seconds against $HOME.
+    // Fall back to a real scan only when the cache is cold.
+    const cached = await services.discovery.loadCached(cfgForScan);
+    if (cached.ok && cached.value !== null) {
+      queueCount = cached.value.queued.length;
+    } else {
+      const scan = await services.discovery.scan(cfgForScan);
+      if (scan.ok) queueCount = scan.value.queued.length;
+    }
   }
 
   const sync = await services.sync.state();

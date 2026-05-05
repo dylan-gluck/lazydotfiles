@@ -12,9 +12,21 @@ export interface DiscoveryState {
   readonly queue: readonly DiscoveryCandidate[];
   readonly autoTracked: readonly string[];
   readonly error: ServiceError | null;
+  readonly refreshing: boolean;
+  readonly scannedAt: string | null;
 }
 
 export type DiscoveryMessage =
+  | Message<"prime", undefined>
+  | Message<
+      "primed",
+      {
+        queued: readonly DiscoveryCandidate[];
+        autoTracked: readonly string[];
+        scannedAt: string;
+      }
+    >
+  | Message<"cacheMiss", undefined>
   | Message<"rescan", undefined>
   | Message<"scanOk", { queued: readonly DiscoveryCandidate[]; autoTracked: readonly string[] }>
   | Message<"scanFailed", { error: ServiceError }>
@@ -42,6 +54,8 @@ export const initialDiscoveryState: DiscoveryState = {
   queue: [],
   autoTracked: [],
   error: null,
+  refreshing: false,
+  scannedAt: null,
 };
 
 const rescanEffect: Effect<DiscoveryMessage, Services> = async ({ config, discovery }) => {
@@ -51,6 +65,22 @@ const rescanEffect: Effect<DiscoveryMessage, Services> = async ({ config, discov
   return r.ok
     ? { kind: "scanOk", payload: { queued: r.value.queued, autoTracked: r.value.autoTracked } }
     : { kind: "scanFailed", payload: { error: r.error } };
+};
+
+const primeEffect: Effect<DiscoveryMessage, Services> = async ({ config, discovery }) => {
+  const cfg = await config.loadOrInit();
+  if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
+  const r = await discovery.loadCached(cfg.value);
+  if (!r.ok) return { kind: "scanFailed", payload: { error: r.error } };
+  if (r.value === null) return { kind: "cacheMiss", payload: undefined };
+  return {
+    kind: "primed",
+    payload: {
+      queued: r.value.queued,
+      autoTracked: r.value.autoTracked,
+      scannedAt: r.value.scannedAt,
+    },
+  };
 };
 
 function expandEffect(path: string, depth?: number): Effect<DiscoveryMessage, Services> {
@@ -85,10 +115,54 @@ export const discoveryReducer: Reducer<
   Services
 > = (state, msg) => {
   switch (msg.kind) {
+    case "prime":
+      return {
+        state: { ...state, refreshing: true, error: null },
+        events: [],
+        effects: [primeEffect],
+      };
+    case "primed": {
+      const { queued, autoTracked, scannedAt } = msg.payload;
+      const events: DiscoveryEvent[] = [{ kind: "scanProgress", payload: { status: "ready" } }];
+      if (queued.length > 0) {
+        events.push({
+          kind: "candidateAdded",
+          payload: { count: queued.length, reason: "include" },
+        });
+      }
+      return {
+        state: {
+          status: "ready",
+          queue: queued,
+          autoTracked,
+          error: null,
+          refreshing: true,
+          scannedAt,
+        },
+        events,
+        effects: [rescanEffect],
+      };
+    }
+    case "cacheMiss":
+      return {
+        state: { ...state, status: "scanning", refreshing: true, error: null },
+        events: [{ kind: "scanProgress", payload: { status: "scanning" } }],
+        effects: [rescanEffect],
+      };
     case "rescan":
       return {
-        state: { ...state, status: "scanning", error: null },
-        events: [{ kind: "scanProgress", payload: { status: "scanning" } }],
+        state: {
+          ...state,
+          status: state.status === "ready" ? "ready" : "scanning",
+          refreshing: true,
+          error: null,
+        },
+        events: [
+          {
+            kind: "scanProgress",
+            payload: { status: state.status === "ready" ? "ready" : "scanning" },
+          },
+        ],
         effects: [rescanEffect],
       };
     case "scanOk": {
@@ -107,15 +181,32 @@ export const discoveryReducer: Reducer<
         });
       }
       return {
-        state: { status: "ready", queue: queued, autoTracked, error: null },
+        state: {
+          status: "ready",
+          queue: queued,
+          autoTracked,
+          error: null,
+          refreshing: false,
+          scannedAt: new Date().toISOString(),
+        },
         events,
         effects: [],
       };
     }
     case "scanFailed":
       return {
-        state: { ...state, status: "error", error: msg.payload.error },
-        events: [{ kind: "scanProgress", payload: { status: "error" } }],
+        state: {
+          ...state,
+          status: state.status === "ready" ? "ready" : "error",
+          error: msg.payload.error,
+          refreshing: false,
+        },
+        events: [
+          {
+            kind: "scanProgress",
+            payload: { status: state.status === "ready" ? "ready" : "error" },
+          },
+        ],
         effects: [],
       };
     case "expand":
@@ -213,11 +304,14 @@ export const discoveryReducer: Reducer<
 };
 
 export function spawnDiscoveryActor(runtime: ActorRuntime<Services>): void {
-  runtime.spawn<DiscoveryState, DiscoveryMessage, DiscoveryEvent>({
+  const actor = runtime.spawn<DiscoveryState, DiscoveryMessage, DiscoveryEvent>({
     id: DISCOVERY_ACTOR_ID,
     initial: initialDiscoveryState,
     reducer: discoveryReducer,
   });
+  // Auto-prime on spawn: serve the cached snapshot immediately while a real
+  // scan runs in the background. Cold starts fall through to a full scan.
+  actor.send({ kind: "prime", payload: undefined });
   // Cross-actor: a candidate accepted in discovery must actually move/symlink
   // via the track service. We forward to the track actor (which queues while
   // a single op is in flight) so the user's optimistic "accepted" state is

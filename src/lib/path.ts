@@ -16,17 +16,17 @@ export function expandHome(input: string, home: string): string {
 }
 
 /**
- * Expand `home`, `dotfiles`, `backup` in a `Paths`-shaped aggregate. Pure;
- * returns a new object preserving any extra fields the caller carries.
+ * Expand `home`, `dotfiles`, `backup`, `cache` in a `Paths`-shaped aggregate.
+ * Pure; returns a new object preserving any extra fields the caller carries.
  */
-export function expandPaths<P extends { home: string; dotfiles: string; backup: string }>(
-  paths: P,
-  home: string,
-): P {
+export function expandPaths<
+  P extends { home: string; dotfiles: string; backup: string; cache?: string | undefined },
+>(paths: P, home: string): P {
   return {
     ...paths,
     home: expandHome(paths.home, home),
     dotfiles: expandHome(paths.dotfiles, home),
     backup: expandHome(paths.backup, home),
+    cache: paths.cache === undefined ? undefined : expandHome(paths.cache, home),
   };
 }

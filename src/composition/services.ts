@@ -1,7 +1,9 @@
-import { defaultConfig } from "../domain/config";
-import { expandPaths } from "../lib/path";
+import { join } from "node:path";
+import { DEFAULT_CACHE_PATH, defaultConfig } from "../domain/config";
+import { expandHome, expandPaths } from "../lib/path";
 import { createBackupRepository } from "../repositories/backup.repository";
 import { createConfigRepository } from "../repositories/config.repository";
+import { createDiscoveryCacheRepository } from "../repositories/discovery-cache.repository";
 import { createFsScannerRepository } from "../repositories/fs-scanner.repository";
 import { createFsRepository } from "../repositories/fs.repository";
 import { createJjRepository } from "../repositories/jj.repository";
@@ -50,7 +52,14 @@ export function wireServices(deps: { home: string }): Services {
   const bootstrap = createBootstrapService({ config, jj, fs });
   const repo = createRepoService({ jj, tracked: trackedRepo, root: dotfilesRoot });
   const scanner = createFsScannerRepository();
-  const discovery = createDiscoveryService({ scanner });
+  const discoveryCache = createDiscoveryCacheRepository({
+    getDbPath: () => {
+      const cfg = config.current();
+      const cacheDir = expandHome(cfg?.path.cache ?? DEFAULT_CACHE_PATH, deps.home);
+      return join(cacheDir, "cache.db");
+    },
+  });
+  const discovery = createDiscoveryService({ scanner, cache: discoveryCache });
   const backupRepo = createBackupRepository({ backupRoot });
   const backups = createBackupService({ repo: backupRepo });
   const track = createTrackService({

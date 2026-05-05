@@ -2,6 +2,10 @@ import { relative } from "node:path";
 import { type DiscoveryCandidate, makeCandidate } from "../domain/candidate";
 import type { Config } from "../domain/config";
 import { err, ok, type Result } from "../lib/result";
+import {
+  type DiscoveryCacheRepository,
+  discoveryConfigHash,
+} from "../repositories/discovery-cache.repository";
 import { type FsScannerRepository, isGlobPattern } from "../repositories/fs-scanner.repository";
 import type { ServiceError } from "./types";
 
@@ -12,8 +16,13 @@ export interface DiscoveryScanResult {
   readonly autoTracked: readonly string[];
 }
 
+export interface DiscoveryCachedResult extends DiscoveryScanResult {
+  readonly scannedAt: string;
+}
+
 export interface DiscoveryService {
   scan(config: Config): Promise<Result<DiscoveryScanResult, ServiceError>>;
+  loadCached(config: Config): Promise<Result<DiscoveryCachedResult | null, ServiceError>>;
   expandSiblings(
     path: string,
     depth?: number,
@@ -23,6 +32,7 @@ export interface DiscoveryService {
 
 export interface DiscoveryServiceDeps {
   readonly scanner: FsScannerRepository;
+  readonly cache?: DiscoveryCacheRepository;
   readonly autoTrack?: (path: string) => Promise<Result<void, ServiceError>>;
 }
 
@@ -71,7 +81,18 @@ export function createDiscoveryService(deps: DiscoveryServiceDeps): DiscoverySer
           queued.push(makeCandidate({ path: abs, kind: "file", reason: "include" }));
         }
       }
+      if (deps.cache !== undefined) {
+        const w = await deps.cache.save(discoveryConfigHash(config), { queued, autoTracked });
+        if (!w.ok) return err({ tag: "Repository", cause: w.error });
+      }
       return ok({ queued, autoTracked });
+    },
+
+    async loadCached(config) {
+      if (deps.cache === undefined) return ok(null);
+      const r = await deps.cache.load(discoveryConfigHash(config));
+      if (!r.ok) return err({ tag: "Repository", cause: r.error });
+      return ok(r.value);
     },
 
     async expandSiblings(path, depth) {

@@ -1,13 +1,20 @@
 import { describe, expect, test } from "bun:test";
+import { makeCandidate } from "../domain/candidate";
 import type { Config } from "../domain/config";
 import { err, ok, type Result } from "../lib/result";
+import type { DiscoveryCacheRepository } from "../repositories/discovery-cache.repository";
 import type { FsScannerRepository } from "../repositories/fs-scanner.repository";
 import { createDiscoveryService, DEFAULT_SIBLING_DEPTH } from "./discovery.service";
 import type { ServiceError } from "./types";
 
 function makeConfig(overrides: Partial<Config["discovery"]> = {}): Config {
   return {
-    path: { home: "/h", dotfiles: "/h/dotfiles", backup: "/h/.dotfiles.bak" },
+    path: {
+      home: "/h",
+      dotfiles: "/h/dotfiles",
+      backup: "/h/.dotfiles.bak",
+      cache: "/h/.cache/lazydotfiles",
+    },
     discovery: {
       auto_track: true,
       include: [".zshrc", ".config/**/*"],
@@ -79,6 +86,82 @@ describe("discovery.service.scan", () => {
     });
     const r = await svc.scan(makeConfig());
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("discovery.service cache integration", () => {
+  function memCache(): {
+    repo: DiscoveryCacheRepository;
+    saved: Array<{ hash: string; queued: number; auto: number }>;
+  } {
+    const saved: Array<{ hash: string; queued: number; auto: number }> = [];
+    let stored: { hash: string; queued: readonly { path: string }[]; auto: readonly string[] } | null = null;
+    const repo: DiscoveryCacheRepository = {
+      kind: "DiscoveryCacheRepository",
+      async load(hash) {
+        if (stored === null || stored.hash !== hash) return ok(null);
+        return ok({
+          queued: stored.queued.map((c) =>
+            makeCandidate({ path: c.path, kind: "file", reason: "include" }),
+          ),
+          autoTracked: stored.auto,
+          scannedAt: "2026-05-01T00:00:00.000Z",
+        });
+      },
+      async save(hash, snap) {
+        stored = { hash, queued: snap.queued, auto: snap.autoTracked };
+        saved.push({ hash, queued: snap.queued.length, auto: snap.autoTracked.length });
+        return ok(undefined);
+      },
+      close() {},
+    };
+    return { repo, saved };
+  }
+
+  test("scan() writes a snapshot through the cache repo", async () => {
+    const { repo, saved } = memCache();
+    const svc = createDiscoveryService({
+      scanner: fakeScanner(["/h/.config/fish/config.fish"]),
+      cache: repo,
+    });
+    const r = await svc.scan(makeConfig({ auto_track: false }));
+    expect(r.ok).toBe(true);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]!.queued).toBe(1);
+  });
+
+  test("loadCached() returns null on cold cache, hits after a scan", async () => {
+    const { repo } = memCache();
+    const svc = createDiscoveryService({
+      scanner: fakeScanner(["/h/.config/fish/config.fish"]),
+      cache: repo,
+    });
+    const cfg = makeConfig({ auto_track: false });
+    const cold = await svc.loadCached(cfg);
+    expect(cold.ok && cold.value === null).toBe(true);
+
+    await svc.scan(cfg);
+
+    const warm = await svc.loadCached(cfg);
+    expect(warm.ok).toBe(true);
+    if (!warm.ok || warm.value === null) throw new Error("expected snapshot");
+    expect(warm.value.queued).toHaveLength(1);
+  });
+
+  test("loadCached() returns null when discovery config slice changed", async () => {
+    const { repo } = memCache();
+    const svc = createDiscoveryService({ scanner: fakeScanner(["/h/.zshrc"]), cache: repo });
+    await svc.scan(makeConfig({ include: [".zshrc"], auto_track: false }));
+    const next = await svc.loadCached(
+      makeConfig({ include: [".bashrc"], auto_track: false }),
+    );
+    expect(next.ok && next.value === null).toBe(true);
+  });
+
+  test("loadCached() returns null when no cache repo is wired", async () => {
+    const svc = createDiscoveryService({ scanner: fakeScanner([]) });
+    const r = await svc.loadCached(makeConfig());
+    expect(r.ok && r.value === null).toBe(true);
   });
 });
 

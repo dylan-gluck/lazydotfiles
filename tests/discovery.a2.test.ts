@@ -31,7 +31,12 @@ describe("PRD A2 — discovery surfaces .zshrc, fish config, and auto-tracks non
 
     const cfg = {
       ...defaultConfig(),
-      path: { home: dir.path, dotfiles: `${dir.path}/dotfiles`, backup: `${dir.path}/.bak` },
+      path: {
+        home: dir.path,
+        dotfiles: `${dir.path}/dotfiles`,
+        backup: `${dir.path}/.bak`,
+        cache: `${dir.path}/.cache`,
+      },
       discovery: {
         auto_track: true,
         include: [".zshrc", ".config/**/*"],

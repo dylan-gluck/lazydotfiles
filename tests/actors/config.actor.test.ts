@@ -56,6 +56,7 @@ function makeServices(config: ConfigService): Services {
     },
     discovery: {
       scan: async () => ok({ queued: [], autoTracked: [] }),
+      loadCached: async () => ok(null),
       expandSiblings: async () => ok([]),
       decide: (c) => c,
     },

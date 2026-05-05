@@ -7,6 +7,7 @@ export const KNOWN_OPTIONS: ReadonlySet<string> = new Set([
   "path.home",
   "path.dotfiles",
   "path.backup",
+  "path.cache",
   "discovery.auto_track",
   "discovery.include",
   "discovery.exclude",

@@ -6,7 +6,7 @@ import type { ConfigRepository, RepoError } from "./types";
 
 const SECTION_ORDER = ["path", "discovery", "options", "experimental"] as const;
 const KEY_ORDER: Record<(typeof SECTION_ORDER)[number], readonly string[]> = {
-  path: ["home", "dotfiles", "backup"],
+  path: ["home", "dotfiles", "backup", "cache"],
   discovery: ["auto_track", "include", "exclude"],
   options: ["vcs", "auto_commit", "auto_sync", "auto_sync_interval", "remote"],
   experimental: ["detect_api_keys"],
