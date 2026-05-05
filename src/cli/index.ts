@@ -25,7 +25,7 @@ export interface CliDeps {
   readonly launchTui?: () => Promise<number>;
 }
 
-export type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync" | "remote";
+type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync" | "remote";
 
 type Handler = (rest: readonly string[], deps: CliDeps) => Promise<number>;
 

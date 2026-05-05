@@ -8,9 +8,9 @@
 // Sets process.exitCode (CONSTITUTION §6.1 forbids process.exit()).
 
 const GUARDS = [
-  "src/views/no-process-exit.test.ts",
-  "src/views/layout-discipline.test.ts",
-  "src/views/theme/no-hex-literals.test.ts",
+  "tests/views/no-process-exit.test.ts",
+  "tests/views/layout-discipline.test.ts",
+  "tests/views/theme/no-hex-literals.test.ts",
 ];
 
 const proc = Bun.spawnSync({

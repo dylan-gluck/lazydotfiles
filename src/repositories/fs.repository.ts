@@ -1,5 +1,6 @@
 import { chmod, copyFile, mkdir, rename, stat, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
+import { isEnoent, isExdev } from "../lib/fs-errors";
 import { err, ok, type Result } from "../lib/result";
 import type { RepoError } from "./types";
 
@@ -19,14 +20,6 @@ export interface FsRepository {
   removeFile(path: string): Promise<Result<void, RepoError>>;
 }
 
-function isEnoent(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "ENOENT";
-}
-
-function isExdev(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "EXDEV";
-}
-
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path);
@@ -34,6 +27,34 @@ async function exists(path: string): Promise<boolean> {
   } catch (cause) {
     if (isEnoent(cause)) return false;
     throw cause;
+  }
+}
+
+async function prepDestination(dst: string): Promise<Result<void, RepoError>> {
+  try {
+    if (await exists(dst)) {
+      return err({
+        tag: "IoError",
+        path: dst,
+        cause: new Error("destination already exists"),
+      });
+    }
+  } catch (cause) {
+    return err({ tag: "IoError", path: dst, cause });
+  }
+  try {
+    await mkdir(dirname(dst), { recursive: true });
+    return ok(undefined);
+  } catch (cause) {
+    return err({ tag: "IoError", path: dirname(dst), cause });
+  }
+}
+
+async function readMode(path: string): Promise<Result<number, RepoError>> {
+  try {
+    return ok((await stat(path)).mode & 0o777);
+  } catch (cause) {
+    return err({ tag: "IoError", path, cause });
   }
 }
 
@@ -77,22 +98,8 @@ export function createFsRepository(): FsRepository {
     },
 
     async move({ src, dst }) {
-      try {
-        if (await exists(dst)) {
-          return err({
-            tag: "IoError",
-            path: dst,
-            cause: new Error("destination already exists"),
-          });
-        }
-      } catch (cause) {
-        return err({ tag: "IoError", path: dst, cause });
-      }
-      try {
-        await mkdir(dirname(dst), { recursive: true });
-      } catch (cause) {
-        return err({ tag: "IoError", path: dirname(dst), cause });
-      }
+      const prep = await prepDestination(dst);
+      if (!prep.ok) return prep;
       try {
         await rename(src, dst);
         return ok(undefined);
@@ -102,15 +109,11 @@ export function createFsRepository(): FsRepository {
         }
       }
       // EXDEV fallback: copy with mode + unlink original.
-      let mode: number;
-      try {
-        mode = (await stat(src)).mode & 0o777;
-      } catch (cause) {
-        return err({ tag: "IoError", path: src, cause });
-      }
+      const mode = await readMode(src);
+      if (!mode.ok) return mode;
       try {
         await copyFile(src, dst);
-        await chmod(dst, mode);
+        await chmod(dst, mode.value);
         await unlink(src);
         return ok(undefined);
       } catch (cause) {
@@ -119,31 +122,13 @@ export function createFsRepository(): FsRepository {
     },
 
     async copyFile({ src, dst }) {
-      try {
-        if (await exists(dst)) {
-          return err({
-            tag: "IoError",
-            path: dst,
-            cause: new Error("destination already exists"),
-          });
-        }
-      } catch (cause) {
-        return err({ tag: "IoError", path: dst, cause });
-      }
-      try {
-        await mkdir(dirname(dst), { recursive: true });
-      } catch (cause) {
-        return err({ tag: "IoError", path: dirname(dst), cause });
-      }
-      let mode: number;
-      try {
-        mode = (await stat(src)).mode & 0o777;
-      } catch (cause) {
-        return err({ tag: "IoError", path: src, cause });
-      }
+      const prep = await prepDestination(dst);
+      if (!prep.ok) return prep;
+      const mode = await readMode(src);
+      if (!mode.ok) return mode;
       try {
         await copyFile(src, dst);
-        await chmod(dst, mode);
+        await chmod(dst, mode.value);
         return ok(undefined);
       } catch (cause) {
         return err({ tag: "IoError", path: src, cause });

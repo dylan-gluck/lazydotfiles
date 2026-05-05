@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { makeTrackedFile } from "../../src/domain/tracked-file";
 import { createTrackedFileRepository } from "../../src/repositories/tracked-file.repository";
-import { withTmpDir } from "../../src/test-utils/tmp";
+import { withTmpDir } from "../test-utils/tmp";
 
 describe("trackedFileRepository", () => {
   test("list() on an empty index returns []", async () => {

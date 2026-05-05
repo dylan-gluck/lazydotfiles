@@ -1,15 +1,19 @@
 import { array, type Infer, literal, object, type Schema, string, union } from "./schema";
 import { DotfileKindSchema } from "./tracked-file";
 
-export const ReasonSchema: Schema<"include" | "sibling-of" | "auto"> = union([
+const ReasonSchema: Schema<"include" | "sibling-of" | "auto"> = union([
   literal("include"),
   literal("sibling-of"),
   literal("auto"),
 ]);
-export type Reason = Infer<typeof ReasonSchema>;
+type Reason = Infer<typeof ReasonSchema>;
 
-export const CandidateStatusSchema: Schema<"pending" | "accepted" | "rejected" | "deferred"> =
-  union([literal("pending"), literal("accepted"), literal("rejected"), literal("deferred")]);
+const CandidateStatusSchema: Schema<"pending" | "accepted" | "rejected" | "deferred"> = union([
+  literal("pending"),
+  literal("accepted"),
+  literal("rejected"),
+  literal("deferred"),
+]);
 export type CandidateStatus = Infer<typeof CandidateStatusSchema>;
 
 export const DiscoveryCandidateSchema = object({

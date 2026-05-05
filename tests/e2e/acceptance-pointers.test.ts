@@ -11,12 +11,12 @@ import { describe, expect, test } from "bun:test";
  * would be ceremony, not coverage.
  *
  * A1 verified by: tests/e2e/a1-boot-speed.test.ts
- * A2 verified by: tests/discovery.a2.test.ts
+ * A2 verified by: tests/services/discovery.a2.test.ts
  * A3 verified by: tests/e2e/a3-add-round-trip.test.ts
- * A4 verified by: src/services/track.service.untrack-history.integration.test.ts
- * A5 verified by: src/services/track.service.sigterm.integration.test.ts
- * A6 verified by: src/services/sync.service.a6.integration.test.ts
- * A7 verified by: src/services/restore.service.a7.integration.test.ts
+ * A4 verified by: tests/services/track.service.untrack-history.integration.test.ts
+ * A5 verified by: tests/services/track.service.sigterm.integration.test.ts
+ * A6 verified by: tests/services/sync.service.a6.integration.test.ts
+ * A7 verified by: tests/services/restore.service.a7.integration.test.ts
  * A8 verified by: docs/audits/a8-test-coverage.md (audit doc)
  * A9 verified by: tests/e2e/a9-static-invariants.test.ts (+ canonical guards)
  */
@@ -28,15 +28,15 @@ interface Pointer {
 
 const CANONICAL_TESTS: Record<string, Pointer> = {
   A1: { path: "tests/e2e/a1-boot-speed.test.ts", mustContainTest: true },
-  A2: { path: "tests/discovery.a2.test.ts", mustContainTest: true },
+  A2: { path: "tests/services/discovery.a2.test.ts", mustContainTest: true },
   A3: { path: "tests/e2e/a3-add-round-trip.test.ts", mustContainTest: true },
   A4: {
-    path: "src/services/track.service.untrack-history.integration.test.ts",
+    path: "tests/services/track.service.untrack-history.integration.test.ts",
     mustContainTest: true,
   },
-  A5: { path: "src/services/track.service.sigterm.integration.test.ts", mustContainTest: true },
-  A6: { path: "src/services/sync.service.a6.integration.test.ts", mustContainTest: true },
-  A7: { path: "src/services/restore.service.a7.integration.test.ts", mustContainTest: true },
+  A5: { path: "tests/services/track.service.sigterm.integration.test.ts", mustContainTest: true },
+  A6: { path: "tests/services/sync.service.a6.integration.test.ts", mustContainTest: true },
+  A7: { path: "tests/services/restore.service.a7.integration.test.ts", mustContainTest: true },
   // A8 is an audit doc — not a test, so no `test(` requirement.
   A8: { path: "docs/audits/a8-test-coverage.md", mustContainTest: false },
   A9: { path: "tests/e2e/a9-static-invariants.test.ts", mustContainTest: true },

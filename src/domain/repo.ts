@@ -51,7 +51,7 @@ export type Operation = Infer<typeof OperationSchema>;
  * `opId` is what `jj op restore` accepts; `changeId` is the short change id (or null
  * for ops with no `@` change, like `add workspace`).
  */
-export const OperationViewSchema = object({
+const OperationViewSchema = object({
   opId: string(),
   changeId: nullableString(),
   parentOpId: nullableString(),
@@ -67,7 +67,6 @@ export const ConflictKindSchema: Schema<"ours" | "theirs" | "edit-pending"> = un
   literal("theirs"),
   literal("edit-pending"),
 ]);
-export type ConflictKind = Infer<typeof ConflictKindSchema>;
 
 /**
  * UI-facing per-file conflict descriptor. `path` is dotfiles-repo-relative
@@ -97,7 +96,6 @@ export const RepoSchema = object({
   vcs: literal("jj"),
   head: OperationSchema,
 });
-export type Repo = Infer<typeof RepoSchema>;
 
 /**
  * Map a `jj describe` message prefix to a canonical `OperationKind`.

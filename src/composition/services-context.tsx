@@ -9,12 +9,6 @@ export function ServicesProvider(props: { services: Services; children: ReactNod
   );
 }
 
-export function useServices(): Services {
-  const s = useContext(ServicesContext);
-  if (s === null) throw new Error("ServicesProvider missing");
-  return s;
-}
-
 export function useOptionalServices(): Services | null {
   return useContext(ServicesContext);
 }

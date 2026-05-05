@@ -169,9 +169,3 @@ export function useHomePanel(): UseHomePanel {
     toast,
   };
 }
-
-export const HOME_LIMITS = {
-  TRACKED_PREVIEW_LIMIT,
-  RECENT_LIMIT,
-  QUEUE_GROUP_LIMIT,
-} as const;

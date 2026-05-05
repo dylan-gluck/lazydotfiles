@@ -10,46 +10,41 @@ import {
   union,
 } from "./schema";
 
-export const VcsKindSchema: Schema<"jj"> = literal("jj");
-export type VcsKind = Infer<typeof VcsKindSchema>;
+const VcsKindSchema: Schema<"jj"> = literal("jj");
 
-export const IntervalSchema: Schema<"hourly" | "daily" | "weekly"> = union([
+const IntervalSchema: Schema<"hourly" | "daily" | "weekly"> = union([
   literal("hourly"),
   literal("daily"),
   literal("weekly"),
 ]);
 export type Interval = Infer<typeof IntervalSchema>;
 
-export const PathsSchema = object({
+const PathsSchema = object({
   home: string(),
   dotfiles: string(),
   backup: string(),
   cache: optional(string()),
 });
-export type Paths = Infer<typeof PathsSchema>;
 
 export const DEFAULT_CACHE_PATH = "$HOME/.cache/lazydotfiles";
 
-export const DiscoverySchema = object({
+const DiscoverySchema = object({
   auto_track: boolean(),
   include: array(string()),
   exclude: array(string()),
 });
-export type Discovery = Infer<typeof DiscoverySchema>;
 
-export const OptionsSchema = object({
+const OptionsSchema = object({
   vcs: VcsKindSchema,
   auto_commit: boolean(),
   auto_sync: boolean(),
   auto_sync_interval: IntervalSchema,
   remote: optional(string()),
 });
-export type Options = Infer<typeof OptionsSchema>;
 
-export const ExperimentalSchema = object({
+const ExperimentalSchema = object({
   detect_api_keys: boolean(),
 });
-export type Experimental = Infer<typeof ExperimentalSchema>;
 
 export const ConfigSchema = object({
   path: PathsSchema,

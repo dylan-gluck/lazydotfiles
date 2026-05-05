@@ -7,6 +7,7 @@ import {
   formatBackupTimestamp,
   makeBackupRecord,
 } from "../domain/backup";
+import { isEnoent, isExdev } from "../lib/fs-errors";
 import { err, ok, type Result } from "../lib/result";
 import type { RepoError } from "./types";
 
@@ -23,14 +24,6 @@ export interface BackupRepository {
   list(trackedFileId: string): Promise<Result<readonly BackupRecord[], RepoError>>;
   read(id: string): Promise<Result<BackupRecord, RepoError>>;
   payloadPath(record: BackupRecord): string;
-}
-
-function isEnoent(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "ENOENT";
-}
-
-function isExdev(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "EXDEV";
 }
 
 const PAYLOAD = "payload";

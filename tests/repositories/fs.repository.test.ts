@@ -1,59 +1,81 @@
-import { describe, expect, test } from "bun:test";
-import { writeFile } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { chmod, mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { makeTmpDir, type TmpDir } from "../test-utils/tmp";
 import { createFsRepository } from "../../src/repositories/fs.repository";
-import { withTmpDir } from "../../src/test-utils/tmp";
 
-describe("FsRepository", () => {
-  test("exists returns false for missing path", async () => {
-    await withTmpDir(async ({ path }) => {
-      const r = await createFsRepository().exists(join(path, "missing"));
-      expect(r.ok).toBe(true);
-      if (r.ok) expect(r.value).toBe(false);
-    });
+let tmp: TmpDir;
+const repo = createFsRepository();
+
+beforeEach(async () => {
+  tmp = await makeTmpDir("ldf-fs-");
+});
+
+afterEach(async () => {
+  await tmp.cleanup();
+});
+
+describe("FsRepository.move", () => {
+  test("renames within a device and preserves mode", async () => {
+    const src = join(tmp.path, "a");
+    await writeFile(src, "data");
+    await chmod(src, 0o600);
+    const dst = join(tmp.path, "sub", "b");
+    const r = await repo.move({ src, dst });
+    expect(r.ok).toBe(true);
+    const s = await stat(dst);
+    expect(s.mode & 0o777).toBe(0o600);
+    expect(await Bun.file(dst).text()).toBe("data");
   });
 
-  test("exists returns true for present file", async () => {
-    await withTmpDir(async ({ path }) => {
-      const f = join(path, "f");
-      await writeFile(f, "hi");
-      const r = await createFsRepository().exists(f);
-      expect(r.ok).toBe(true);
-      if (r.ok) expect(r.value).toBe(true);
-    });
+  test("refuses to overwrite an existing dst", async () => {
+    const src = join(tmp.path, "a");
+    const dst = join(tmp.path, "b");
+    await writeFile(src, "x");
+    await writeFile(dst, "y");
+    const r = await repo.move({ src, dst });
+    expect(r.ok).toBe(false);
+    expect(await Bun.file(dst).text()).toBe("y");
   });
+});
 
-  test("ensureDir creates a new directory", async () => {
-    await withTmpDir(async ({ path }) => {
-      const fs = createFsRepository();
-      const target = join(path, "a", "b", "c");
-      const r = await fs.ensureDir(target);
-      expect(r.ok).toBe(true);
-      if (r.ok) expect(r.value.created).toBe(true);
-      const e = await fs.exists(target);
-      expect(e.ok && e.value).toBe(true);
-    });
+describe("FsRepository.copyFile", () => {
+  test("preserves mode and refuses overwrite", async () => {
+    const src = join(tmp.path, "src");
+    const dst = join(tmp.path, "dst");
+    await writeFile(src, "data");
+    await chmod(src, 0o755);
+    const r = await repo.copyFile({ src, dst });
+    expect(r.ok).toBe(true);
+    expect((await stat(dst)).mode & 0o777).toBe(0o755);
+    const r2 = await repo.copyFile({ src, dst });
+    expect(r2.ok).toBe(false);
   });
+});
 
-  test("ensureDir is idempotent (created=false on second call)", async () => {
-    await withTmpDir(async ({ path }) => {
-      const fs = createFsRepository();
-      const target = join(path, "x");
-      const a = await fs.ensureDir(target);
-      const b = await fs.ensureDir(target);
-      expect(a.ok && a.value.created).toBe(true);
-      expect(b.ok && b.value.created).toBe(false);
-    });
+describe("FsRepository.removeFile", () => {
+  test("idempotent on ENOENT", async () => {
+    const r = await repo.removeFile(join(tmp.path, "nope"));
+    expect(r.ok).toBe(true);
   });
+  test("removes regular files", async () => {
+    const path = join(tmp.path, "x");
+    await writeFile(path, "");
+    const r = await repo.removeFile(path);
+    expect(r.ok).toBe(true);
+    expect(await Bun.file(path).exists()).toBe(false);
+  });
+});
 
-  test("ensureDir refuses to clobber a file at the target path", async () => {
-    await withTmpDir(async ({ path }) => {
-      const fs = createFsRepository();
-      const target = join(path, "f");
-      await writeFile(target, "hi");
-      const r = await fs.ensureDir(target);
-      expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error.tag).toBe("IoError");
-    });
+describe("FsRepository.ensureDir", () => {
+  test("creates new and reports created=true", async () => {
+    const r = await repo.ensureDir(join(tmp.path, "new"));
+    expect(r.ok && r.value.created).toBe(true);
+  });
+  test("idempotent on existing dir", async () => {
+    const path = join(tmp.path, "existing");
+    await mkdir(path);
+    const r = await repo.ensureDir(path);
+    expect(r.ok && r.value.created).toBe(false);
   });
 });

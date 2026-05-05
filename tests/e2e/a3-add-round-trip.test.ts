@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { trackedFileId } from "../../src/domain/tracked-file";
 import { createJjRepository } from "../../src/repositories/jj.repository";
-import { isSymlink, readSymlinkTarget } from "../../src/test-utils/fs";
+import { isSymlink, readSymlinkTarget } from "../test-utils/fs";
 import { HAS_JJ } from "../test-utils/jj";
 import { withE2eHome } from "./harness";
 

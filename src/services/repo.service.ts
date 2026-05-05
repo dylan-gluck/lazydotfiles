@@ -16,9 +16,11 @@ export interface RepoService {
    * Idempotently configure the dotfiles repo's `origin` remote (or the named
    * one). Adds when missing, sets URL otherwise.
    */
-  setRemote(opts: { root?: string; url: string; name?: string }): Promise<
-    Result<void, ServiceError>
-  >;
+  setRemote(opts: {
+    root?: string;
+    url: string;
+    name?: string;
+  }): Promise<Result<void, ServiceError>>;
 }
 
 export function createRepoService(deps: {

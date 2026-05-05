@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { createJjRepository } from "../../src/repositories/jj.repository";
-import { withTmpDir } from "../../src/test-utils/tmp";
+import { withTmpDir } from "../test-utils/tmp";
 import { HAS_JJ } from "../test-utils/jj";
 
 describe.if(HAS_JJ)("JjRepository — isRepo / initColocated", () => {

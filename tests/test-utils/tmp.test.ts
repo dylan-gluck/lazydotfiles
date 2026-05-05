@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { stat } from "node:fs/promises";
-import { makeTmpDir, withTmpDir } from "../../src/test-utils/tmp";
+import { makeTmpDir, withTmpDir } from "./tmp";
 
 describe("tmp", () => {
   test("makeTmpDir creates a directory and cleanup removes it", async () => {

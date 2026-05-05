@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { DEFAULT_CONFIG_TEXT, defaultConfig } from "../../src/domain/config";
 import { createConfigRepository, serializeConfig } from "../../src/repositories/config.repository";
-import { withTmpDir } from "../../src/test-utils/tmp";
+import { withTmpDir } from "../test-utils/tmp";
 
 describe("ConfigRepository (TOML)", () => {
   test("serializeConfig(defaultConfig()) === DEFAULT_CONFIG_TEXT", () => {

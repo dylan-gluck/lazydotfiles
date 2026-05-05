@@ -1,10 +1,7 @@
 import { Database } from "bun:sqlite";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import {
-  type DiscoveryCandidate,
-  DiscoveryCandidateSchema,
-} from "../domain/candidate";
+import { type DiscoveryCandidate, DiscoveryCandidateSchema } from "../domain/candidate";
 import type { Config } from "../domain/config";
 import { array } from "../domain/schema";
 import { err, ok, type Result } from "../lib/result";

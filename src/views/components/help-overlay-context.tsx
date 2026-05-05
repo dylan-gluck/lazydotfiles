@@ -12,7 +12,7 @@ const NOOP_CTRL: HelpOverlayController = {
   close: () => {},
 };
 
-export const HelpOverlayContext = createContext<HelpOverlayController>(NOOP_CTRL);
+const HelpOverlayContext = createContext<HelpOverlayController>(NOOP_CTRL);
 
 export function HelpOverlayProvider(props: { children: ReactNode }): ReactNode {
   const [open, setOpen] = useState(false);

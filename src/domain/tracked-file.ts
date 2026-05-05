@@ -7,11 +7,11 @@ export const DotfileKindSchema: Schema<"file" | "directory" | "template"> = unio
 ]);
 export type DotfileKind = Infer<typeof DotfileKindSchema>;
 
-export const TrackedStatusSchema: Schema<"tracked" | "untracked"> = union([
+const TrackedStatusSchema: Schema<"tracked" | "untracked"> = union([
   literal("tracked"),
   literal("untracked"),
 ]);
-export type TrackedStatus = Infer<typeof TrackedStatusSchema>;
+type TrackedStatus = Infer<typeof TrackedStatusSchema>;
 
 export const TrackedFileSchema = object({
   id: string(),

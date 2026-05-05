@@ -1,6 +1,6 @@
 import { wireServices, type Services } from "../../src/composition/services";
 import { runCli } from "../../src/cli";
-import { withTmpDir } from "../../src/test-utils/tmp";
+import { withTmpDir } from "../test-utils/tmp";
 
 export interface E2eRun {
   readonly home: string;

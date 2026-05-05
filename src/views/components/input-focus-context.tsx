@@ -15,7 +15,7 @@ const NOOP_CTRL: InputFocusController = {
   setActive: () => {},
 };
 
-export const InputFocusContext = createContext<InputFocusController>(NOOP_CTRL);
+const InputFocusContext = createContext<InputFocusController>(NOOP_CTRL);
 
 export function InputFocusProvider(props: { children: ReactNode }): ReactNode {
   const [active, setActive] = useState(false);

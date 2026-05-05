@@ -3,6 +3,7 @@
 | Revision | Date       | Author |
 | -------- | ---------- | ------ |
 | 1        | 2026-05-01 | core   |
+| 2        | 2026-05-04 | core   |
 
 The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL NOT**", "**SHOULD**", "**SHOULD NOT**", "**RECOMMENDED**", "**MAY**", and "**OPTIONAL**" in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
@@ -93,7 +94,15 @@ Every domain service, every reducer, every repository **MUST** have tests. Tests
 - Snapshot tests cover view layout via `@opentui/react/test-utils`.
 - Mocks **SHOULD** be avoided. When a real dependency is too heavy, prefer a fake (a real implementation with simplified backing) over a mock.
 
-### 3.2 Meaningful
+### 3.2 Test location
+
+Tests **MUST** live under `tests/` mirroring the `src/` directory layout (e.g. a unit covering `src/services/foo.ts` lives at `tests/services/foo.test.ts`). Co-located `*.test.ts(x)` files inside `src/` are **PROHIBITED**.
+
+- Shared test fixtures and helpers **MUST** live under `tests/test-utils/` (no parallel `src/test-utils/`).
+- The Bun preload (`bunfig.toml [test] preload`) **MUST** point into `tests/test-utils/`.
+- Acceptance pointers and audit references **MUST** use the `tests/...` path.
+
+### 3.3 Meaningful
 
 A test **MUST** fail for a specific reason. Tests that only assert "did not throw" are **PROHIBITED** unless the production code's only contract is "does not throw".
 
@@ -126,3 +135,4 @@ The following are inviolable; their violation **MUST** block merge:
 6. No hand-rolled width/height for layout flow. Use flexbox.
 7. No untested service or reducer.
 8. No `any` outside the carve-outs in §4.
+9. No co-located `*.test.ts(x)` inside `src/`. Tests live under `tests/` mirroring `src/`.

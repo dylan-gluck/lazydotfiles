@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { wireServices } from "../../src/composition/services";
 import { runCli } from "../../src/cli";
-import { withTmpDir } from "../../src/test-utils/tmp";
+import { withTmpDir } from "../test-utils/tmp";
 import { HAS_JJ } from "../test-utils/jj";
 
 /**

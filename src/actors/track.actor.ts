@@ -83,23 +83,9 @@ export const trackReducer: Reducer<TrackState, TrackMessage, TrackEvent, Service
   msg,
 ) => {
   switch (msg.kind) {
-    case "add": {
-      const op: InFlightOp = { kind: "add", path: msg.payload.path };
-      if (state.inFlight !== null) {
-        return {
-          state: { ...state, pending: [...state.pending, op] },
-          events: [],
-          effects: [],
-        };
-      }
-      return {
-        state: { inFlight: op, pending: state.pending, lastError: null },
-        events: [],
-        effects: [addEffect(op.path)],
-      };
-    }
+    case "add":
     case "remove": {
-      const op: InFlightOp = { kind: "remove", path: msg.payload.path };
+      const op: InFlightOp = { kind: msg.kind, path: msg.payload.path };
       if (state.inFlight !== null) {
         return {
           state: { ...state, pending: [...state.pending, op] },
@@ -107,10 +93,11 @@ export const trackReducer: Reducer<TrackState, TrackMessage, TrackEvent, Service
           effects: [],
         };
       }
+      const effect = msg.kind === "add" ? addEffect(op.path) : removeEffect(op.path);
       return {
         state: { inFlight: op, pending: state.pending, lastError: null },
         events: [],
-        effects: [removeEffect(op.path)],
+        effects: [effect],
       };
     }
     case "addOk": {

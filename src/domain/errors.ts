@@ -16,8 +16,6 @@ export interface DomainErrorDetails {
 
 export type DomainErrorOf<K extends DomainErrorTag> = { readonly tag: K } & DomainErrorDetails[K];
 
-export type DomainErrorUnion = { [K in DomainErrorTag]: DomainErrorOf<K> }[DomainErrorTag];
-
 export class DomainError<K extends DomainErrorTag = DomainErrorTag> extends Error {
   readonly tag: K;
   readonly details: DomainErrorDetails[K];

@@ -6,6 +6,7 @@ import {
   parseOperationKind,
   type SyncState,
 } from "../domain/repo";
+import { isEnoent } from "../lib/fs-errors";
 import { err, ok, type Result } from "../lib/result";
 import type { RepoError } from "./types";
 
@@ -85,10 +86,6 @@ const LOG_TEMPLATE =
   `description.first_line() ++ "${US}" ++ ` +
   `author.timestamp().format("%+") ++ "${US}" ++ ` +
   `"\n"`;
-
-function isEnoent(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "ENOENT";
-}
 
 interface RunOk {
   readonly stdout: string;
@@ -366,10 +363,9 @@ export function createJjRepository(): JjRepository {
     },
 
     async bookmarkSet({ root, name, revision }) {
-      const r = await runJj(
-        ["bookmark", "set", name, "-r", revision, "--allow-backwards"],
-        { cwd: root },
-      );
+      const r = await runJj(["bookmark", "set", name, "-r", revision, "--allow-backwards"], {
+        cwd: root,
+      });
       return r.ok ? ok(undefined) : err(r.error);
     },
 

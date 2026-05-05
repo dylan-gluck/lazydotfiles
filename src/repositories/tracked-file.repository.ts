@@ -1,6 +1,7 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { TrackedFileSchema, type TrackedFile } from "../domain/tracked-file";
+import { isEnoent } from "../lib/fs-errors";
 import { err, ok, type Result } from "../lib/result";
 import type { RepoError } from "./types";
 
@@ -10,10 +11,6 @@ export interface TrackedFileRepository {
   read(id: string): Promise<Result<TrackedFile, RepoError>>;
   upsert(file: TrackedFile): Promise<Result<void, RepoError>>;
   remove(id: string): Promise<Result<void, RepoError>>;
-}
-
-function isEnoent(e: unknown): boolean {
-  return typeof e === "object" && e !== null && (e as { code?: string }).code === "ENOENT";
 }
 
 export function createTrackedFileRepository(opts: { dotfilesRoot: string }): TrackedFileRepository {
