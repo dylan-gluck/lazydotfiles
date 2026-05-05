@@ -90,12 +90,17 @@ describe("discovery.service.scan", () => {
 });
 
 describe("discovery.service cache integration", () => {
-  function memCache(): {
+  function memCache(initialDeferred: readonly string[] = []): {
     repo: DiscoveryCacheRepository;
     saved: Array<{ hash: string; queued: number; auto: number }>;
+    removed: Array<{ hash: string; path: string }>;
+    deferred: Set<string>;
   } {
     const saved: Array<{ hash: string; queued: number; auto: number }> = [];
-    let stored: { hash: string; queued: readonly { path: string }[]; auto: readonly string[] } | null = null;
+    const removed: Array<{ hash: string; path: string }> = [];
+    const deferred = new Set<string>(initialDeferred);
+    let stored: { hash: string; queued: readonly { path: string }[]; auto: readonly string[] } | null =
+      null;
     const repo: DiscoveryCacheRepository = {
       kind: "DiscoveryCacheRepository",
       async load(hash) {
@@ -113,9 +118,30 @@ describe("discovery.service cache integration", () => {
         saved.push({ hash, queued: snap.queued.length, auto: snap.autoTracked.length });
         return ok(undefined);
       },
+      async removePath(hash, path) {
+        removed.push({ hash, path });
+        if (stored === null || stored.hash !== hash) return ok(undefined);
+        stored = {
+          hash,
+          queued: stored.queued.filter((c) => c.path !== path),
+          auto: stored.auto.filter((p) => p !== path),
+        };
+        return ok(undefined);
+      },
+      async markDeferred(path) {
+        deferred.add(path);
+        return ok(undefined);
+      },
+      async unmarkDeferred(path) {
+        deferred.delete(path);
+        return ok(undefined);
+      },
+      async loadDeferred() {
+        return ok([...deferred].sort());
+      },
       close() {},
     };
-    return { repo, saved };
+    return { repo, saved, removed, deferred };
   }
 
   test("scan() writes a snapshot through the cache repo", async () => {
@@ -162,6 +188,58 @@ describe("discovery.service cache integration", () => {
     const svc = createDiscoveryService({ scanner: fakeScanner([]) });
     const r = await svc.loadCached(makeConfig());
     expect(r.ok && r.value === null).toBe(true);
+  });
+
+  test("scan() filters deferred paths from the queue", async () => {
+    const { repo } = memCache(["/h/.config/git/config"]);
+    const svc = createDiscoveryService({
+      scanner: fakeScanner(["/h/.config/fish/config.fish", "/h/.config/git/config"]),
+      cache: repo,
+    });
+    const r = await svc.scan(makeConfig({ auto_track: false }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.queued.map((c) => c.path)).toEqual(["/h/.config/fish/config.fish"]);
+  });
+
+  test("commitAccept() removes the path from the cached snapshot", async () => {
+    const { repo, removed } = memCache();
+    const svc = createDiscoveryService({
+      scanner: fakeScanner(["/h/.config/fish/config.fish"]),
+      cache: repo,
+    });
+    const cfg = makeConfig({ auto_track: false });
+    await svc.scan(cfg);
+    const r = await svc.commitAccept(cfg, "/h/.config/fish/config.fish");
+    expect(r.ok).toBe(true);
+    expect(removed).toEqual([
+      { hash: removed[0]!.hash, path: "/h/.config/fish/config.fish" },
+    ]);
+    const cached = await svc.loadCached(cfg);
+    if (!cached.ok || cached.value === null) throw new Error("expected snapshot");
+    expect(cached.value.queued).toHaveLength(0);
+  });
+
+  test("commitDefer() removes from snapshot and persists in deferred set", async () => {
+    const { repo, deferred } = memCache();
+    const svc = createDiscoveryService({
+      scanner: fakeScanner(["/h/.config/fish/config.fish"]),
+      cache: repo,
+    });
+    const cfg = makeConfig({ auto_track: false });
+    await svc.scan(cfg);
+    const r = await svc.commitDefer(cfg, "/h/.config/fish/config.fish");
+    expect(r.ok).toBe(true);
+    expect(deferred.has("/h/.config/fish/config.fish")).toBe(true);
+    // Subsequent scan should now skip the deferred path.
+    const next = await svc.scan(cfg);
+    expect(next.ok && next.value.queued).toEqual([]);
+  });
+
+  test("commitAccept/commitDefer are no-ops without a cache", async () => {
+    const svc = createDiscoveryService({ scanner: fakeScanner([]) });
+    expect((await svc.commitAccept(makeConfig(), "/h/x")).ok).toBe(true);
+    expect((await svc.commitDefer(makeConfig(), "/h/x")).ok).toBe(true);
   });
 });
 

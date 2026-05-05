@@ -36,6 +36,9 @@ export type DiscoveryMessage =
   | Message<"accept", { id: string }>
   | Message<"reject", { id: string }>
   | Message<"defer", { id: string }>
+  | Message<"commitAccept", { path: string }>
+  | Message<"commitDefer", { path: string }>
+  | Message<"commitAck", undefined>
   | Message<"revertAcceptByPath", { path: string }>
   | Message<"restoreStatuses", { entries: ReadonlyArray<{ id: string; status: CandidateStatus }> }>;
 
@@ -89,6 +92,28 @@ function expandEffect(path: string, depth?: number): Effect<DiscoveryMessage, Se
     return r.ok
       ? { kind: "expandOk", payload: { siblings: r.value } }
       : { kind: "expandFailed", payload: { error: r.error } };
+  };
+}
+
+function commitAcceptEffect(path: string): Effect<DiscoveryMessage, Services> {
+  return async ({ config, discovery }) => {
+    const cfg = await config.loadOrInit();
+    if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
+    const r = await discovery.commitAccept(cfg.value, path);
+    return r.ok
+      ? { kind: "commitAck", payload: undefined }
+      : { kind: "scanFailed", payload: { error: r.error } };
+  };
+}
+
+function commitDeferEffect(path: string): Effect<DiscoveryMessage, Services> {
+  return async ({ config, discovery }) => {
+    const cfg = await config.loadOrInit();
+    if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
+    const r = await discovery.commitDefer(cfg.value, path);
+    return r.ok
+      ? { kind: "commitAck", payload: undefined }
+      : { kind: "scanFailed", payload: { error: r.error } };
   };
 }
 
@@ -276,6 +301,20 @@ export const discoveryReducer: Reducer<
         effects: [],
       };
     }
+    case "commitAccept":
+      return {
+        state,
+        events: [],
+        effects: [commitAcceptEffect(msg.payload.path)],
+      };
+    case "commitDefer":
+      return {
+        state,
+        events: [],
+        effects: [commitDeferEffect(msg.payload.path)],
+      };
+    case "commitAck":
+      return { state, events: [], effects: [] };
     case "revertAcceptByPath": {
       let changed = false;
       const queue = state.queue.map((c) => {
@@ -318,11 +357,25 @@ export function spawnDiscoveryActor(runtime: ActorRuntime<Services>): void {
   // backed by the real move. Revert to pending on failure.
   type DecidedEvent = Extract<DiscoveryEvent, { kind: "candidateDecided" }>;
   type AddFailedEvent = Extract<TrackEvent, { kind: "addFailed" }>;
+  type TrackedEvent = Extract<TrackEvent, { kind: "tracked" }>;
   runtime.on<DecidedEvent>("candidateDecided", (event) => {
-    if (event.payload.decision !== "accept") return;
+    if (event.payload.decision === "accept") {
+      runtime
+        .get<unknown, TrackMessage>(TRACK_ACTOR_ID)
+        .send({ kind: "add", payload: { path: event.payload.path } });
+      return;
+    }
+    if (event.payload.decision === "defer") {
+      // Defer is purely a record — persist it now so future scans skip it.
+      runtime
+        .get<DiscoveryState, DiscoveryMessage>(DISCOVERY_ACTOR_ID)
+        .send({ kind: "commitDefer", payload: { path: event.payload.path } });
+    }
+  });
+  runtime.on<TrackedEvent>("tracked", (event) => {
     runtime
-      .get<unknown, TrackMessage>(TRACK_ACTOR_ID)
-      .send({ kind: "add", payload: { path: event.payload.path } });
+      .get<DiscoveryState, DiscoveryMessage>(DISCOVERY_ACTOR_ID)
+      .send({ kind: "commitAccept", payload: { path: event.payload.file.target } });
   });
   runtime.on<AddFailedEvent>("addFailed", (event) => {
     runtime

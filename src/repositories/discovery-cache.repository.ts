@@ -23,6 +23,15 @@ export interface DiscoveryCacheRepository {
     configHash: string,
     snapshot: { queued: readonly DiscoveryCandidate[]; autoTracked: readonly string[] },
   ): Promise<Result<void, RepoError>>;
+  /**
+   * Drop a single path from the cached snapshot if its config hash matches.
+   * No-op when the cache is cold or stored under a different hash — a fresh
+   * scan will rebuild the snapshot from the live filesystem anyway.
+   */
+  removePath(configHash: string, path: string): Promise<Result<void, RepoError>>;
+  markDeferred(path: string): Promise<Result<void, RepoError>>;
+  unmarkDeferred(path: string): Promise<Result<void, RepoError>>;
+  loadDeferred(): Promise<Result<readonly string[], RepoError>>;
   close(): void;
 }
 
@@ -75,6 +84,9 @@ export function createDiscoveryCacheRepository(
       next.run("PRAGMA journal_mode = WAL");
       next.run(
         "CREATE TABLE IF NOT EXISTS discovery_cache (id INTEGER PRIMARY KEY CHECK (id = 1), config_hash TEXT NOT NULL, scanned_at TEXT NOT NULL, payload TEXT NOT NULL)",
+      );
+      next.run(
+        "CREATE TABLE IF NOT EXISTS deferred_paths (path TEXT PRIMARY KEY, deferred_at TEXT NOT NULL)",
       );
       db = next;
       openPath = path;
@@ -149,6 +161,60 @@ export function createDiscoveryCacheRepository(
           )
           .run(configHash, scannedAt, payload);
         return ok(undefined);
+      } catch (cause) {
+        return err({ tag: "IoError", path: opened.value.path, cause });
+      }
+    },
+
+    async removePath(configHash, path) {
+      const current = await this.load(configHash);
+      if (!current.ok) return err(current.error);
+      if (current.value === null) return ok(undefined);
+      const queued = current.value.queued.filter((c) => c.path !== path);
+      const autoTracked = current.value.autoTracked.filter((p) => p !== path);
+      if (
+        queued.length === current.value.queued.length &&
+        autoTracked.length === current.value.autoTracked.length
+      ) {
+        return ok(undefined);
+      }
+      return this.save(configHash, { queued, autoTracked });
+    },
+
+    async markDeferred(path) {
+      const opened = await ensureOpen();
+      if (!opened.ok) return err(opened.error);
+      try {
+        opened.value.db
+          .query(
+            "INSERT INTO deferred_paths (path, deferred_at) VALUES (?, ?) ON CONFLICT(path) DO UPDATE SET deferred_at = excluded.deferred_at",
+          )
+          .run(path, new Date().toISOString());
+        return ok(undefined);
+      } catch (cause) {
+        return err({ tag: "IoError", path: opened.value.path, cause });
+      }
+    },
+
+    async unmarkDeferred(path) {
+      const opened = await ensureOpen();
+      if (!opened.ok) return err(opened.error);
+      try {
+        opened.value.db.query("DELETE FROM deferred_paths WHERE path = ?").run(path);
+        return ok(undefined);
+      } catch (cause) {
+        return err({ tag: "IoError", path: opened.value.path, cause });
+      }
+    },
+
+    async loadDeferred() {
+      const opened = await ensureOpen();
+      if (!opened.ok) return err(opened.error);
+      try {
+        const rows = opened.value.db
+          .query<{ path: string }, []>("SELECT path FROM deferred_paths ORDER BY path")
+          .all();
+        return ok(rows.map((r) => r.path));
       } catch (cause) {
         return err({ tag: "IoError", path: opened.value.path, cause });
       }

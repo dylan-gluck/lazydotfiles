@@ -151,6 +151,26 @@ describe("discoveryReducer", () => {
     expect(deferred.state.queue[0]!.status).toBe("deferred");
   });
 
+  test("commitAccept dispatches a single effect, no state change, no events", () => {
+    const out = discoveryReducer(initialDiscoveryState, {
+      kind: "commitAccept",
+      payload: { path: "/h/.config/fish/config.fish" },
+    });
+    expect(out.state).toBe(initialDiscoveryState);
+    expect(out.events).toEqual([]);
+    expect(out.effects).toHaveLength(1);
+  });
+
+  test("commitDefer dispatches a single effect, no state change", () => {
+    const out = discoveryReducer(initialDiscoveryState, {
+      kind: "commitDefer",
+      payload: { path: "/h/.config/git/config" },
+    });
+    expect(out.state).toBe(initialDiscoveryState);
+    expect(out.events).toEqual([]);
+    expect(out.effects).toHaveLength(1);
+  });
+
   test("accept on missing id is a no-op", () => {
     const out = discoveryReducer(initialDiscoveryState, {
       kind: "accept",
@@ -166,6 +186,8 @@ describe("discovery actor (effect)", () => {
     const fakeDiscovery: DiscoveryService = {
       scan: async () => ok({ queued: [c1, c2], autoTracked: [] }),
       loadCached: async () => ok(null),
+      commitAccept: async () => ok(undefined),
+      commitDefer: async () => ok(undefined),
       expandSiblings: async () => ok([]),
       decide: (c, d) => ({ ...c, status: d === "accept" ? "accepted" : "pending" }),
     };

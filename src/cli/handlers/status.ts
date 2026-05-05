@@ -26,12 +26,15 @@ export async function statusHandler(_rest: readonly string[], deps: CliDeps): Pr
 
   const cfgForScan = services.config.current();
   let queueCount: number | "?" = "?";
+  let cacheHit = false;
   if (cfgForScan !== null) {
-    // Prefer the cached snapshot — a fresh scan can take seconds against $HOME.
-    // Fall back to a real scan only when the cache is cold.
+    // Display the cached snapshot first — a fresh scan can take seconds
+    // against $HOME, so the user sees a number instantly. The post-print scan
+    // below refreshes the cache so the next `ldf status` reflects reality.
     const cached = await services.discovery.loadCached(cfgForScan);
     if (cached.ok && cached.value !== null) {
       queueCount = cached.value.queued.length;
+      cacheHit = true;
     } else {
       const scan = await services.discovery.scan(cfgForScan);
       if (scan.ok) queueCount = scan.value.queued.length;
@@ -65,5 +68,12 @@ export async function statusHandler(_rest: readonly string[], deps: CliDeps): Pr
       "",
     ].join("\n"),
   );
+
+  // Refresh the cache after printing so the next call is current. Discard the
+  // result — output already left the door. We only do this on a cache hit so
+  // a cold start still ends promptly.
+  if (cacheHit && cfgForScan !== null) {
+    await services.discovery.scan(cfgForScan);
+  }
   return 0;
 }

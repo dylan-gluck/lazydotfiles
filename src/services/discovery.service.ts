@@ -23,6 +23,13 @@ export interface DiscoveryCachedResult extends DiscoveryScanResult {
 export interface DiscoveryService {
   scan(config: Config): Promise<Result<DiscoveryScanResult, ServiceError>>;
   loadCached(config: Config): Promise<Result<DiscoveryCachedResult | null, ServiceError>>;
+  /** Drop a path from the cached snapshot once it has been tracked. */
+  commitAccept(config: Config, path: string): Promise<Result<void, ServiceError>>;
+  /**
+   * Drop a path from the cached snapshot and add it to the persistent
+   * deferred set so future scans skip it.
+   */
+  commitDefer(config: Config, path: string): Promise<Result<void, ServiceError>>;
   expandSiblings(
     path: string,
     depth?: number,
@@ -66,11 +73,23 @@ export function createDiscoveryService(deps: DiscoveryServiceDeps): DiscoverySer
       const queued: DiscoveryCandidate[] = [];
       const autoTracked: string[] = [];
       const auto = config.discovery.auto_track;
+
+      // Persisted deferrals are honored across runs: a deferred path is
+      // skipped at the source, so it doesn't reappear in the queue until the
+      // user explicitly clears it.
+      let deferredSet: Set<string> = new Set();
+      if (deps.cache !== undefined) {
+        const dr = await deps.cache.loadDeferred();
+        if (!dr.ok) return err({ tag: "Repository", cause: dr.error });
+        deferredSet = new Set(dr.value);
+      }
+
       for await (const abs of deps.scanner.scan({
         home,
         include: config.discovery.include,
         exclude: config.discovery.exclude,
       })) {
+        if (deferredSet.has(abs)) continue;
         if (auto && isAutoTrackPath(abs, home, config.discovery.include)) {
           if (deps.autoTrack !== undefined) {
             const r = await deps.autoTrack(abs);
@@ -93,6 +112,22 @@ export function createDiscoveryService(deps: DiscoveryServiceDeps): DiscoverySer
       const r = await deps.cache.load(discoveryConfigHash(config));
       if (!r.ok) return err({ tag: "Repository", cause: r.error });
       return ok(r.value);
+    },
+
+    async commitAccept(config, path) {
+      if (deps.cache === undefined) return ok(undefined);
+      const r = await deps.cache.removePath(discoveryConfigHash(config), path);
+      if (!r.ok) return err({ tag: "Repository", cause: r.error });
+      return ok(undefined);
+    },
+
+    async commitDefer(config, path) {
+      if (deps.cache === undefined) return ok(undefined);
+      const removed = await deps.cache.removePath(discoveryConfigHash(config), path);
+      if (!removed.ok) return err({ tag: "Repository", cause: removed.error });
+      const marked = await deps.cache.markDeferred(path);
+      if (!marked.ok) return err({ tag: "Repository", cause: marked.error });
+      return ok(undefined);
     },
 
     async expandSiblings(path, depth) {
