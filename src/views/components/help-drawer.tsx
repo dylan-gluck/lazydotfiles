@@ -8,21 +8,17 @@ import type { PanelBinding } from "./panel-bindings-context";
 export interface HelpDrawerProps {
   readonly activeLabel: string | null;
   readonly activeBindings: readonly PanelBinding[];
+  readonly activeExtras: readonly PanelBinding[];
   onClose(): void;
 }
 
 const COLUMNS = 3;
 
-/** A normalized binding row that the help drawer renders. */
 interface HelpRow {
   readonly key: string;
   readonly desc: string;
 }
 
-/**
- * Chunk into N columns, filling each top-to-bottom (column-major). Mirrors the
- * reading order in the reference design: scan column 1 down, then column 2.
- */
 function chunkColumnMajor<T>(items: readonly T[], cols: number): T[][] {
   const out: T[][] = Array.from({ length: cols }, () => []);
   if (items.length === 0) return out;
@@ -35,16 +31,21 @@ function chunkColumnMajor<T>(items: readonly T[], cols: number): T[][] {
 }
 
 /**
- * Bottom-anchored help drawer: replaces the AppShell footer when help is open.
- * Two sections — the active panel's bindings and the global keymap — each laid
- * out in 3 column-major columns of `key  desc` rows.
+ * Bottom-anchored help drawer. Replaces the footer while open. Two sections:
+ * context-aware (panel footer + extras for the focused element) and global.
+ * Closed by `?` or `Esc`.
  */
-export function HelpDrawer({ activeLabel, activeBindings, onClose }: HelpDrawerProps): ReactNode {
+export function HelpDrawer({
+  activeLabel,
+  activeBindings,
+  activeExtras,
+  onClose,
+}: HelpDrawerProps): ReactNode {
   const t = useTheme();
   useKeyboard((e) => {
     if (e.name === "escape" || e.name === "?") onClose();
   });
-  const activeRows: readonly HelpRow[] = activeBindings.map((b) => ({
+  const contextRows: readonly HelpRow[] = [...activeBindings, ...activeExtras].map((b) => ({
     key: b.keys,
     desc: b.description,
   }));
@@ -61,9 +62,9 @@ export function HelpDrawer({ activeLabel, activeBindings, onClose }: HelpDrawerP
       borderColor={t.fg.muted}
       flexShrink={0}
     >
-      <box flexDirection="row" gap={1}>
-        {activeRows.length > 0 ? (
-          <Section title={activeLabel ?? "Panel"} rows={activeRows} />
+      <box flexDirection="row" gap={t.space.lg}>
+        {contextRows.length > 0 ? (
+          <Section title={activeLabel ?? "panel"} rows={contextRows} />
         ) : null}
         <Section title="global" rows={globalRows} />
       </box>
@@ -83,19 +84,17 @@ function Section({
   const columns = chunkColumnMajor(rows, COLUMNS);
   return (
     <box flexDirection="column" paddingBottom={1} flexGrow={1} flexShrink={0}>
-      <text fg={t.fg.default} attributes={TextAttributes.BOLD}>
+      <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
         {title}
       </text>
       <box flexDirection="row" gap={t.space.lg}>
-        {columns.map((col, ci) => {
-          return (
-            <box key={ci} flexDirection="column">
-              {col.map((row, ri) => (
-                <Row key={ri} row={row} />
-              ))}
-            </box>
-          );
-        })}
+        {columns.map((col, ci) => (
+          <box key={ci} flexDirection="column">
+            {col.map((row, ri) => (
+              <Row key={ri} row={row} />
+            ))}
+          </box>
+        ))}
       </box>
     </box>
   );

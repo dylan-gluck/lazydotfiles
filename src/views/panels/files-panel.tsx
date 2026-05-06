@@ -9,6 +9,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelExtras,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { Section } from "../components/section";
@@ -31,7 +32,6 @@ const TRACKED_BINDINGS: readonly PanelBinding[] = [
   { keys: "tab", description: "col" },
   { keys: "d", description: "diff" },
   { keys: "u", description: "untrack" },
-  { keys: "i", description: "ignore" },
   { keys: "s", description: "sync" },
 ];
 const UNTRACKED_BINDINGS: readonly PanelBinding[] = [
@@ -42,8 +42,25 @@ const UNTRACKED_BINDINGS: readonly PanelBinding[] = [
   { keys: "s", description: "sync" },
 ];
 
+const TRACKED_EXTRAS: readonly PanelBinding[] = [
+  { keys: "shift+U", description: "untrack group" },
+];
+const UNTRACKED_EXTRAS: readonly PanelBinding[] = [
+  { keys: "shift+T", description: "track group" },
+  { keys: "shift+I", description: "ignore group" },
+  { keys: "enter", description: "expand" },
+];
+
 export interface FilesPanelProps {
   readonly model: UseFilesPanel;
+  /** Open the logs view filtered by a tracked file's target. */
+  onViewLog?(target: string): void;
+  /** Track every pending candidate in this top-level segment. */
+  onTrackGroup?(segment: string): void;
+  /** Defer every pending candidate in this top-level segment. */
+  onIgnoreGroup?(segment: string): void;
+  /** Expand a top-level segment so siblings appear in the queue. */
+  onExpandGroup?(segment: string): void;
 }
 
 /**
@@ -52,7 +69,13 @@ export interface FilesPanelProps {
  *   - Left: split tracked (top) / untracked (bottom). Each scrolls.
  *   - Right: focused-file metadata + line-numbered contents preview.
  */
-export function FilesPanel({ model }: FilesPanelProps): ReactNode {
+export function FilesPanel({
+  model,
+  onViewLog,
+  onTrackGroup,
+  onIgnoreGroup,
+  onExpandGroup,
+}: FilesPanelProps): ReactNode {
   const t = useTheme();
   usePublishPanelLabel("files");
 
@@ -60,11 +83,18 @@ export function FilesPanel({ model }: FilesPanelProps): ReactNode {
   const [trackedIdx, setTrackedIdx] = useState(0);
   const [untrackedIdx, setUntrackedIdx] = useState(0);
   const [pendingRemove, setPendingRemove] = useState<TrackedFile | null>(null);
-  useInputFocusEffect(pendingRemove !== null);
+  const [pendingTrackGroup, setPendingTrackGroup] = useState<string | null>(null);
+  const [pendingIgnoreGroup, setPendingIgnoreGroup] = useState<string | null>(null);
+  const inputBlocked =
+    pendingRemove !== null || pendingTrackGroup !== null || pendingIgnoreGroup !== null;
+  useInputFocusEffect(inputBlocked);
 
   const bindings: readonly PanelBinding[] =
     column === "tracked" ? TRACKED_BINDINGS : UNTRACKED_BINDINGS;
   usePublishPanelBindings(bindings);
+  const extras: readonly PanelBinding[] =
+    column === "tracked" ? TRACKED_EXTRAS : UNTRACKED_EXTRAS;
+  usePublishPanelExtras(extras);
 
   // Clamp focus when row counts shrink.
   useEffect(() => {
@@ -74,8 +104,7 @@ export function FilesPanel({ model }: FilesPanelProps): ReactNode {
     if (untrackedIdx >= model.untrackedGroups.length && untrackedIdx > 0) setUntrackedIdx(0);
   }, [model.untrackedGroups.length, untrackedIdx]);
 
-  const focusedTracked: TrackedFile | undefined =
-    column === "tracked" ? model.tracked[trackedIdx] : model.tracked[trackedIdx];
+  const focusedTracked: TrackedFile | undefined = model.tracked[trackedIdx];
   const focusedUntracked: UntrackedGroup | undefined = model.untrackedGroups[untrackedIdx];
 
   // Load contents preview for the focused tracked file.
@@ -106,7 +135,7 @@ export function FilesPanel({ model }: FilesPanelProps): ReactNode {
   }, [previewSource, model]);
 
   useKeyboard((event) => {
-    if (pendingRemove !== null) return;
+    if (inputBlocked) return;
     switch (event.name) {
       case "tab":
         setColumn((c) => (c === "tracked" ? "untracked" : "tracked"));
@@ -130,6 +159,26 @@ export function FilesPanel({ model }: FilesPanelProps): ReactNode {
       case "u":
         if (column === "tracked" && focusedTracked !== undefined) {
           setPendingRemove(focusedTracked);
+        }
+        return;
+      case "d":
+        if (column === "tracked" && focusedTracked !== undefined) {
+          onViewLog?.(focusedTracked.target);
+        }
+        return;
+      case "t":
+        if (column === "untracked" && focusedUntracked !== undefined) {
+          setPendingTrackGroup(focusedUntracked.segment);
+        }
+        return;
+      case "i":
+        if (column === "untracked" && focusedUntracked !== undefined) {
+          setPendingIgnoreGroup(focusedUntracked.segment);
+        }
+        return;
+      case "return":
+        if (column === "untracked" && focusedUntracked !== undefined) {
+          onExpandGroup?.(focusedUntracked.segment);
         }
         return;
     }
@@ -168,6 +217,32 @@ export function FilesPanel({ model }: FilesPanelProps): ReactNode {
           onCancel={() => setPendingRemove(null)}
         />
       ) : null}
+      {pendingTrackGroup !== null ? (
+        <ConfirmModal
+          title="Track group"
+          summary={`Track every pending candidate under ${pendingTrackGroup}? Each will be moved into the dotfiles repo and replaced with a symlink.`}
+          paths={[pendingTrackGroup]}
+          confirmLabel="Track"
+          onConfirm={() => {
+            onTrackGroup?.(pendingTrackGroup);
+            setPendingTrackGroup(null);
+          }}
+          onCancel={() => setPendingTrackGroup(null)}
+        />
+      ) : null}
+      {pendingIgnoreGroup !== null ? (
+        <ConfirmModal
+          title="Ignore group"
+          summary={`Defer every pending candidate under ${pendingIgnoreGroup}? Future scans will skip them.`}
+          paths={[pendingIgnoreGroup]}
+          confirmLabel="Ignore"
+          onConfirm={() => {
+            onIgnoreGroup?.(pendingIgnoreGroup);
+            setPendingIgnoreGroup(null);
+          }}
+          onCancel={() => setPendingIgnoreGroup(null)}
+        />
+      ) : null}
     </box>
   );
 }
@@ -191,7 +266,7 @@ function LeftColumn({
   return (
     <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column">
       <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
-        <SectionTitle label="tracked" meta="touched" />
+        <SectionTitle label="tracked" meta={`${tracked.length} · touched`} />
         <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
           {tracked.length === 0 ? (
             <text fg={t.fg.muted}>(no tracked files)</text>
@@ -209,7 +284,10 @@ function LeftColumn({
       </box>
       <box border={["bottom"]} borderColor={t.fg.muted} />
       <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
-        <SectionTitle label="untracked" meta="count" />
+        <SectionTitle
+          label="untracked"
+          meta={untrackedGroups.length === 0 ? "0" : `${untrackedGroups.length} · count`}
+        />
         <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
           {untrackedGroups.length === 0 ? (
             <box flexDirection="column">
@@ -249,8 +327,8 @@ function RightColumn({
   const t = useTheme();
   if (focused === null && focusedUntracked === null) {
     return (
-      <box flexBasis={0} flexGrow={1} flexShrink={1} padding={1}>
-        <text fg={t.fg.muted}>select a file</text>
+      <box flexBasis={0} flexGrow={1} flexShrink={1} padding={1} flexDirection="column">
+        <SectionTitle label="select a file" />
       </box>
     );
   }
@@ -259,8 +337,9 @@ function RightColumn({
       <box flexBasis={0} flexGrow={1} flexShrink={1} padding={1} flexDirection="column">
         <SectionTitle label={focusedUntracked.segment} meta="untracked group" />
         <SectionRow margin={String(focusedUntracked.count)} body="candidates pending review" />
-        <SectionRow margin="t" body="track group" />
-        <SectionRow margin="i" body="ignore group" />
+        <SectionRow margin="t" body={<text fg={t.fg.muted}>track group</text>} />
+        <SectionRow margin="i" body={<text fg={t.fg.muted}>ignore group</text>} />
+        <SectionRow margin="enter" body={<text fg={t.fg.muted}>expand</text>} />
       </box>
     );
   }

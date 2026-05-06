@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 
-/** A single panel-scoped key hint to render in the AppShell footer. */
+/** A single panel-scoped key hint. */
 export interface PanelBinding {
   /** Display label for the key, e.g. "a", "A", "/", "↑/↓". */
   readonly keys: string;
@@ -9,19 +9,27 @@ export interface PanelBinding {
 }
 
 interface PanelBindingsController {
+  /** Bindings shown in the footer center slot. Keep short. */
   readonly bindings: readonly PanelBinding[];
+  /** Extra context-aware bindings shown only in the `?` drawer. */
+  readonly extras: readonly PanelBinding[];
   readonly label: string | null;
   publishBindings(b: readonly PanelBinding[]): void;
   clearBindings(): void;
+  publishExtras(b: readonly PanelBinding[]): void;
+  clearExtras(): void;
   publishLabel(l: string): void;
   clearLabel(): void;
 }
 
 const NOOP_CTRL: PanelBindingsController = {
   bindings: [],
+  extras: [],
   label: null,
   publishBindings: () => {},
   clearBindings: () => {},
+  publishExtras: () => {},
+  clearExtras: () => {},
   publishLabel: () => {},
   clearLabel: () => {},
 };
@@ -30,12 +38,16 @@ const PanelBindingsContext = createContext<PanelBindingsController>(NOOP_CTRL);
 
 export function PanelBindingsProvider(props: { children: ReactNode }): ReactNode {
   const [bindings, setBindings] = useState<readonly PanelBinding[]>([]);
+  const [extras, setExtras] = useState<readonly PanelBinding[]>([]);
   const [label, setLabel] = useState<string | null>(null);
   const ctrl: PanelBindingsController = {
     bindings,
+    extras,
     label,
     publishBindings: setBindings,
     clearBindings: () => setBindings([]),
+    publishExtras: setExtras,
+    clearExtras: () => setExtras([]),
     publishLabel: setLabel,
     clearLabel: () => setLabel(null),
   };
@@ -44,20 +56,24 @@ export function PanelBindingsProvider(props: { children: ReactNode }): ReactNode
   );
 }
 
-/** Read the active panel's bindings — used by the AppShell footer. */
+/** Footer reads. */
 export function useActivePanelBindings(): readonly PanelBinding[] {
   return useContext(PanelBindingsContext).bindings;
 }
 
-/** Read the active panel's chip label — used by the AppShell footer. */
+/** Help drawer reads. */
+export function useActivePanelExtras(): readonly PanelBinding[] {
+  return useContext(PanelBindingsContext).extras;
+}
+
+/** Footer chip label. */
 export function useActivePanelLabel(): string | null {
   return useContext(PanelBindingsContext).label;
 }
 
 /**
- * Publish a panel's bindings into the AppShell footer for the lifetime of the
- * caller. Pass a stable array (memoize at the call site) to avoid spurious
- * re-publishes on each render.
+ * Publish a panel's footer bindings for its lifetime. Pass a stable array
+ * (memoize at the call site) to avoid spurious re-publishes on each render.
  */
 export function usePublishPanelBindings(bindings: readonly PanelBinding[]): void {
   const ctrl = useContext(PanelBindingsContext);
@@ -72,9 +88,22 @@ export function usePublishPanelBindings(bindings: readonly PanelBinding[]): void
 }
 
 /**
- * Publish the panel's chip label (e.g. "discover", "tracked") into the
- * AppShell footer. Same ownership semantics as bindings.
+ * Publish a panel's help-drawer-only extras for its lifetime. Same ownership
+ * semantics as bindings. Stable arrays only.
  */
+export function usePublishPanelExtras(extras: readonly PanelBinding[]): void {
+  const ctrl = useContext(PanelBindingsContext);
+  const ownedRef = useRef<readonly PanelBinding[] | null>(null);
+  useEffect(() => {
+    ctrl.publishExtras(extras);
+    ownedRef.current = extras;
+    return () => {
+      if (ownedRef.current === extras) ctrl.clearExtras();
+    };
+  }, [extras, ctrl]);
+}
+
+/** Publish the chip label for the panel's lifetime. */
 export function usePublishPanelLabel(label: string): void {
   const ctrl = useContext(PanelBindingsContext);
   const ownedRef = useRef<string | null>(null);

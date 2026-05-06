@@ -10,6 +10,8 @@ export interface KeymapContext {
     fetch(): void;
     push(): void;
     rescan(): void;
+    /** Full re-index: drop discovery cache + rescan. */
+    reindex(): void;
   };
   /** True when a panel is actively consuming text input (editor, draft, …). */
   readonly inputActive: boolean;
@@ -80,6 +82,12 @@ export const globalKeymap: readonly Binding[] = [
     description: "rescan",
     when: whenIdle,
     run: ({ actions }) => actions.rescan(),
+  },
+  {
+    keys: ["R"],
+    description: "re-index",
+    when: whenIdle,
+    run: ({ actions }) => actions.reindex(),
   },
   {
     keys: ["?"],

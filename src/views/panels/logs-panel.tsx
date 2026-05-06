@@ -9,6 +9,7 @@ import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelExtras,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { PanelError } from "../components/panel-error";
@@ -25,13 +26,22 @@ const DIFF_MAX_LINES = 400;
 
 const BINDINGS: readonly PanelBinding[] = [
   { keys: "↑/↓", description: "select" },
+  { keys: "f", description: "fetch" },
+  { keys: "p", description: "push" },
+  { keys: "s", description: "sync" },
+];
+
+const EXTRAS: readonly PanelBinding[] = [
   { keys: "enter", description: "diff" },
-  { keys: "R", description: "restore" },
-  { keys: "B", description: "from backup" },
+  { keys: "shift+R", description: "restore to here" },
+  { keys: "b", description: "open backup" },
+  { keys: "y", description: "yank hash" },
 ];
 
 export interface LogsPanelProps {
   readonly model: UseLogPanel;
+  /** Yank text to the system clipboard. Optional; no-op if omitted. */
+  onYank?(text: string): void;
 }
 
 type PendingRestore = { kind: "op" | "backup"; op: OperationView } | null;
@@ -53,6 +63,17 @@ function parseDiff(text: string): readonly CodeLine[] {
     }));
 }
 
+function diffStats(text: string): { adds: number; dels: number } {
+  let adds = 0;
+  let dels = 0;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("+++") || line.startsWith("---")) continue;
+    if (line.startsWith("+")) adds++;
+    else if (line.startsWith("-")) dels++;
+  }
+  return { adds, dels };
+}
+
 function describeOpForConfirm(op: OperationView): string {
   const desc = op.description.trim();
   const id = op.opId.slice(0, 8);
@@ -61,15 +82,13 @@ function describeOpForConfirm(op: OperationView): string {
 }
 
 /**
- * View 3 — `logs`. Two equal columns:
- *
- *   - Left: revisions list (one section, full-height, scrolls).
- *   - Right: focused revision metadata + line-numbered diff.
+ * View 3 — `logs`. Two equal columns: revisions list + focused revision diff.
  */
-export function LogsPanel({ model }: LogsPanelProps): ReactNode {
+export function LogsPanel({ model, onYank }: LogsPanelProps): ReactNode {
   const t = useTheme();
   usePublishPanelLabel("logs");
   usePublishPanelBindings(BINDINGS);
+  usePublishPanelExtras(EXTRAS);
 
   const [pending, setPending] = useState<PendingRestore>(null);
   useInputFocusEffect(pending !== null);
@@ -79,15 +98,12 @@ export function LogsPanel({ model }: LogsPanelProps): ReactNode {
     [model.operations, model.focusId],
   );
 
-  // Auto-load diff for the focused op so the right pane never sits empty after
-  // arrow-key navigation.
+  // Auto-load the diff for the focused op.
   useEffect(() => {
     if (focused === null) return;
     if (model.diff !== null && model.diff.opId === focused.opId) return;
     if (model.diffLoading) return;
     model.loadDiff(focused.opId);
-    // model.loadDiff is recreated each render; tracking only the focused id
-    // keeps this from looping.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused?.opId]);
 
@@ -116,8 +132,11 @@ export function LogsPanel({ model }: LogsPanelProps): ReactNode {
       case "R":
         if (focused !== null) setPending({ kind: "op", op: focused });
         return;
-      case "B":
+      case "b":
         if (focused !== null) setPending({ kind: "backup", op: focused });
+        return;
+      case "y":
+        if (focused !== null) onYank?.(focused.opId);
         return;
     }
   });
@@ -126,10 +145,9 @@ export function LogsPanel({ model }: LogsPanelProps): ReactNode {
     return <PanelError title="Logs unavailable" error={model.error} />;
   }
 
-  const diffLines: readonly CodeLine[] =
-    model.diff !== null && focused !== null && model.diff.opId === focused.opId
-      ? parseDiff(model.diff.text)
-      : [];
+  const diffText = focused !== null && model.diff?.opId === focused.opId ? model.diff.text : null;
+  const diffLines: readonly CodeLine[] = diffText === null ? [] : parseDiff(diffText);
+  const stats = diffText === null ? null : diffStats(diffText);
 
   return (
     <box flexDirection="column" flexGrow={1}>
@@ -140,11 +158,7 @@ export function LogsPanel({ model }: LogsPanelProps): ReactNode {
           status={model.status}
         />
         <box width={1} flexShrink={0} border={["right"]} borderColor={t.fg.muted} />
-        <RevisionDetail
-          focused={focused}
-          diffLines={diffLines}
-          diffLoading={model.diffLoading}
-        />
+        <RevisionDetail focused={focused} diffLines={diffLines} stats={stats} diffLoading={model.diffLoading} />
       </box>
       {pending !== null
         ? (() => {
@@ -188,9 +202,7 @@ function RevisionList({
     <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
       <SectionTitle
         label="revisions"
-        meta={
-          operations.length === 0 ? "0" : `${operations.length} · ${operations.length} total`
-        }
+        meta={operations.length === 0 ? "0" : `${operations.length} · ${operations.length} total`}
       />
       <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
         {operations.length === 0 && status === "ready" ? (
@@ -198,8 +210,7 @@ function RevisionList({
         ) : null}
         {operations.map((op) => {
           const isFocused = op.opId === focusId;
-          const desc =
-            op.description.trim().length > 0 ? op.description : `(${op.kind})`;
+          const desc = op.description.trim().length > 0 ? op.description : `(${op.kind})`;
           const truncated = truncateToWidth(desc, REV_DESC_MAX);
           const left = `${op.opId.slice(0, 8)}  ${truncated}`;
           return (
@@ -220,10 +231,12 @@ function RevisionList({
 function RevisionDetail({
   focused,
   diffLines,
+  stats,
   diffLoading,
 }: {
   readonly focused: OperationView | null;
   readonly diffLines: readonly CodeLine[];
+  readonly stats: { adds: number; dels: number } | null;
   readonly diffLoading: boolean;
 }): ReactNode {
   const t = useTheme();
@@ -234,13 +247,24 @@ function RevisionDetail({
       </box>
     );
   }
-  const title =
-    focused.description.trim().length > 0 ? focused.description : `(${focused.kind})`;
+  const title = focused.description.trim().length > 0 ? focused.description : `(${focused.kind})`;
   const filesLabel =
     focused.filesTouched.length === 0
       ? "(none)"
-      : `${focused.filesTouched.length} changed`;
+      : stats === null
+        ? `${focused.filesTouched.length} changed`
+        : `${focused.filesTouched.length} changed · +${stats.adds} −${stats.dels}`;
   const firstFile = focused.filesTouched[0] ?? null;
+  const jjOp =
+    focused.kind === "edit"
+      ? `describe -m "${truncateToWidth(focused.description, 32)}"`
+      : `${focused.kind}`;
+  const diffMeta =
+    firstFile === null
+      ? undefined
+      : stats === null
+        ? truncateToWidth(firstFile, 60)
+        : `${truncateToWidth(firstFile, 40)} · +${stats.adds} −${stats.dels}`;
   return (
     <scrollbox flexBasis={0} flexGrow={1} flexShrink={1} scrollY scrollX={false}>
       <Section>
@@ -254,17 +278,17 @@ function RevisionDetail({
           value={focused.parentOpId === null ? "(none)" : focused.parentOpId.slice(0, 8)}
         />
         <MetaRow label="kind" value={focused.kind} />
+        <MetaRow label="author" value="you" />
         <MetaRow label="at" value={focused.at} />
         <MetaRow label="files" value={filesLabel} />
-        {firstFile !== null ? (
-          <MetaRow label="touched" value={truncateToWidth(firstFile, META_VALUE_MAX)} />
-        ) : null}
+        <MetaRow label="jj op" value={truncateToWidth(jjOp, META_VALUE_MAX)} />
+        <MetaRow
+          label="backup"
+          value={firstFile === null ? "—" : "press b to restore"}
+        />
       </Section>
       <Section>
-        <SectionTitle
-          label="diff"
-          meta={firstFile === null ? undefined : truncateToWidth(firstFile, 60)}
-        />
+        <SectionTitle label="diff" meta={diffMeta} />
         {diffLoading ? (
           <text fg={t.fg.muted}>loading diff…</text>
         ) : diffLines.length === 0 ? (

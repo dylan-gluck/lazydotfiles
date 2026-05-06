@@ -3,7 +3,11 @@ import { useTheme } from "../theme";
 import { AppFooter } from "./app-footer";
 import { AppHeader } from "./app-header";
 import { HelpDrawer } from "./help-drawer";
-import { useActivePanelBindings, useActivePanelLabel } from "./panel-bindings-context";
+import {
+  useActivePanelBindings,
+  useActivePanelExtras,
+  useActivePanelLabel,
+} from "./panel-bindings-context";
 
 export interface AppShellProps {
   readonly helpOpen?: boolean;
@@ -12,13 +16,13 @@ export interface AppShellProps {
 }
 
 /**
- * Top-level frame: global header at the top, route content fills available
- * space, global footer at the bottom. When help is open, the help drawer
- * replaces the footer and pushes the body up.
+ * Top-level frame: global header, route content, global footer. When help is
+ * open, the help drawer replaces the footer.
  */
 export function AppShell({ helpOpen, onCloseHelp, children }: AppShellProps): ReactNode {
   const t = useTheme();
   const bindings = useActivePanelBindings();
+  const extras = useActivePanelExtras();
   const label = useActivePanelLabel();
   return (
     <box flexDirection="column" flexGrow={1} backgroundColor={t.bg.default}>
@@ -27,7 +31,12 @@ export function AppShell({ helpOpen, onCloseHelp, children }: AppShellProps): Re
         {children}
       </box>
       {helpOpen === true ? (
-        <HelpDrawer activeLabel={label} activeBindings={bindings} onClose={onCloseHelp ?? noop} />
+        <HelpDrawer
+          activeLabel={label}
+          activeBindings={bindings}
+          activeExtras={extras}
+          onClose={onCloseHelp ?? noop}
+        />
       ) : (
         <AppFooter label={label} bindings={bindings} />
       )}

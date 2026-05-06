@@ -21,6 +21,7 @@ function makeCtx(overrides: Partial<KeymapContext> = {}): KeymapContext {
       fetch: () => {},
       push: () => {},
       rescan: () => {},
+      reindex: () => {},
     },
     inputActive: false,
     ...overrides,

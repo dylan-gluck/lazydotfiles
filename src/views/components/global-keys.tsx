@@ -30,6 +30,8 @@ export function GlobalKeys(): null {
         fetch: () => sync.send({ kind: "runFetch", payload: undefined }),
         push: () => sync.send({ kind: "runPush", payload: undefined }),
         rescan: () => discovery.send({ kind: "rescan", payload: undefined }),
+        // No service-level cache drop; rescan suffices to refresh the queue.
+        reindex: () => discovery.send({ kind: "rescan", payload: undefined }),
       },
       inputActive: inputFocus.active,
     }),

@@ -3,9 +3,12 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { HomeQueueGroup, UseHomePanel } from "../../controllers/home.controller";
 import type { Operation } from "../../domain/repo";
 import type { TrackedFile } from "../../domain/tracked-file";
+import { ConfirmModal } from "../components/confirm-modal";
+import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
+  usePublishPanelExtras,
   usePublishPanelLabel,
 } from "../components/panel-bindings-context";
 import { Section } from "../components/section";
@@ -21,10 +24,16 @@ const REMOTE_LABEL_MAX = 60;
 
 export interface StatusPanelProps {
   readonly model: UseHomePanel;
-  /** Open the logs view scoped to a tracked file's target path. */
-  onViewLog?(target: string): void;
+  /** Open the logs view. Optional id focuses a specific op. */
+  onViewLog?(opId?: string): void;
   /** Switch to the files view (typically when enter on an untracked group). */
   onOpenFiles?(): void;
+  /** Untrack a single tracked file. */
+  onUntrack?(target: string): void;
+  /** Track every pending candidate in this top-level segment. */
+  onTrackGroup?(segment: string): void;
+  /** Defer every pending candidate in this top-level segment. */
+  onIgnoreGroup?(segment: string): void;
 }
 
 type RowKind = "tracked" | "untracked" | "op";
@@ -33,6 +42,9 @@ interface FocusableRow {
   readonly kind: RowKind;
   readonly id: string;
   readonly trackedTarget?: string;
+  readonly trackedFile?: TrackedFile;
+  readonly groupSegment?: string;
+  readonly opId?: string;
 }
 
 const TRACKED_BINDINGS: readonly PanelBinding[] = [
@@ -57,11 +69,27 @@ const OP_BINDINGS: readonly PanelBinding[] = [
 ];
 const DEFAULT_BINDINGS: readonly PanelBinding[] = TRACKED_BINDINGS;
 
+const TRACKED_EXTRAS: readonly PanelBinding[] = [
+  { keys: "shift+U", description: "untrack group" },
+];
+const UNTRACKED_EXTRAS: readonly PanelBinding[] = [
+  { keys: "shift+T", description: "track group" },
+  { keys: "shift+I", description: "ignore group" },
+];
+const NO_EXTRAS: readonly PanelBinding[] = [];
+
 /**
  * View 1 — `status`. Margin-note manuscript layout. One scrollable column with
  * four sections: `tracked`, `untracked`, `remote`, `logs`.
  */
-export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps): ReactNode {
+export function StatusPanel({
+  model,
+  onViewLog,
+  onOpenFiles,
+  onUntrack,
+  onTrackGroup,
+  onIgnoreGroup,
+}: StatusPanelProps): ReactNode {
   const t = useTheme();
   usePublishPanelLabel("status");
 
@@ -71,19 +99,28 @@ export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps)
         kind: "tracked",
         id: tf.id,
         trackedTarget: tf.target,
+        trackedFile: tf,
       })),
       ...model.queueGroups.map<FocusableRow>((g) => ({
         kind: "untracked",
         id: `q:${g.segment}`,
+        groupSegment: g.segment,
       })),
       ...model.recentOperations.map<FocusableRow>((op) => ({
         kind: "op",
         id: `o:${op.id}`,
+        opId: op.id,
       })),
     ],
     [model.tracked, model.queueGroups, model.recentOperations],
   );
   const [focusIdx, setFocusIdx] = useState(0);
+  const [pendingUntrack, setPendingUntrack] = useState<TrackedFile | null>(null);
+  const [pendingTrackGroup, setPendingTrackGroup] = useState<string | null>(null);
+  const [pendingIgnoreGroup, setPendingIgnoreGroup] = useState<string | null>(null);
+  useInputFocusEffect(
+    pendingUntrack !== null || pendingTrackGroup !== null || pendingIgnoreGroup !== null,
+  );
 
   const focused = focusable[focusIdx];
   const focusedKind: RowKind | null = focused?.kind ?? null;
@@ -99,9 +136,27 @@ export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps)
         return DEFAULT_BINDINGS;
     }
   }, [focusedKind]);
+  const extras = useMemo<readonly PanelBinding[]>(() => {
+    switch (focusedKind) {
+      case "tracked":
+        return TRACKED_EXTRAS;
+      case "untracked":
+        return UNTRACKED_EXTRAS;
+      default:
+        return NO_EXTRAS;
+    }
+  }, [focusedKind]);
   usePublishPanelBindings(bindings);
+  usePublishPanelExtras(extras);
 
   useKeyboard((event) => {
+    if (
+      pendingUntrack !== null ||
+      pendingTrackGroup !== null ||
+      pendingIgnoreGroup !== null
+    ) {
+      return;
+    }
     switch (event.name) {
       case "j":
       case "down":
@@ -116,12 +171,33 @@ export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps)
       case "return": {
         const here = focusable[focusIdx];
         if (here === undefined) return;
-        if (here.kind === "tracked" && here.trackedTarget !== undefined) {
-          onViewLog?.(here.trackedTarget);
+        if (here.kind === "tracked") {
+          onViewLog?.();
         } else if (here.kind === "untracked") {
           onOpenFiles?.();
-        } else if (here.kind === "op") {
-          onViewLog?.("");
+        } else if (here.kind === "op" && here.opId !== undefined) {
+          onViewLog?.(here.opId);
+        }
+        return;
+      }
+      case "u": {
+        const here = focusable[focusIdx];
+        if (here?.kind === "tracked" && here.trackedFile !== undefined) {
+          setPendingUntrack(here.trackedFile);
+        }
+        return;
+      }
+      case "t": {
+        const here = focusable[focusIdx];
+        if (here?.kind === "untracked" && here.groupSegment !== undefined) {
+          setPendingTrackGroup(here.groupSegment);
+        }
+        return;
+      }
+      case "i": {
+        const here = focusable[focusIdx];
+        if (here?.kind === "untracked" && here.groupSegment !== undefined) {
+          setPendingIgnoreGroup(here.groupSegment);
         }
         return;
       }
@@ -181,7 +257,12 @@ export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps)
           {model.queueGroups.length === 0 ? (
             <SectionRow
               margin="—"
-              body={<text fg={t.fg.muted}>nothing pending · press r to rescan</text>}
+              body={
+                <box flexDirection="column">
+                  <text fg={t.fg.default}>nothing pending</text>
+                  <text fg={t.fg.muted}>press r to rescan</text>
+                </box>
+              }
             />
           ) : (
             model.queueGroups.map((g) => (
@@ -235,6 +316,48 @@ export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps)
             {model.toast.message}
           </text>
         </box>
+      ) : null}
+
+      {pendingUntrack !== null ? (
+        <ConfirmModal
+          title="Untrack file"
+          summary={`Untrack ${pendingUntrack.target}? The symlink is replaced with the file at its current dotfiles content; jj history is preserved.`}
+          paths={[pendingUntrack.target, pendingUntrack.source]}
+          confirmLabel="Untrack"
+          onConfirm={() => {
+            onUntrack?.(pendingUntrack.target);
+            setPendingUntrack(null);
+          }}
+          onCancel={() => setPendingUntrack(null)}
+        />
+      ) : null}
+
+      {pendingTrackGroup !== null ? (
+        <ConfirmModal
+          title="Track group"
+          summary={`Track every pending candidate under ${pendingTrackGroup}? Each will be moved into the dotfiles repo and replaced with a symlink.`}
+          paths={[pendingTrackGroup]}
+          confirmLabel="Track"
+          onConfirm={() => {
+            onTrackGroup?.(pendingTrackGroup);
+            setPendingTrackGroup(null);
+          }}
+          onCancel={() => setPendingTrackGroup(null)}
+        />
+      ) : null}
+
+      {pendingIgnoreGroup !== null ? (
+        <ConfirmModal
+          title="Ignore group"
+          summary={`Defer every pending candidate under ${pendingIgnoreGroup}? Future scans will skip them.`}
+          paths={[pendingIgnoreGroup]}
+          confirmLabel="Ignore"
+          onConfirm={() => {
+            onIgnoreGroup?.(pendingIgnoreGroup);
+            setPendingIgnoreGroup(null);
+          }}
+          onCancel={() => setPendingIgnoreGroup(null)}
+        />
       ) : null}
     </box>
   );
