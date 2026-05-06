@@ -65,8 +65,8 @@ export interface Tokens {
 const ansiFg = {
   default: RGBA.defaultForeground(),
   heading: RGBA.defaultForeground(),
-  focus: RGBA.fromIndex(11),
-  action: RGBA.fromIndex(14),
+  focus: RGBA.fromIndex(10),
+  action: RGBA.fromIndex(12),
   muted: RGBA.fromIndex(8),
   subtle: RGBA.fromIndex(8),
   success: RGBA.fromIndex(10),
@@ -90,8 +90,8 @@ export const dark: Tokens = {
   mode: "dark",
   bg: {
     default: RGBA.defaultBackground(),
-    surface: RGBA.fromIndex(0),
-    elevated: RGBA.fromIndex(8),
+    surface: RGBA.defaultBackground(),
+    elevated: RGBA.defaultBackground(),
   },
 };
 
@@ -100,7 +100,7 @@ export const light: Tokens = {
   mode: "light",
   bg: {
     default: RGBA.defaultBackground(),
-    surface: RGBA.fromIndex(7),
-    elevated: RGBA.fromIndex(15),
+    surface: RGBA.defaultBackground(),
+    elevated: RGBA.defaultBackground(),
   },
 };
