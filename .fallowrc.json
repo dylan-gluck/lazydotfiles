@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
-  "entry": ["src/index.tsx"],
-  "ignorePatterns": ["docs/**/*", "tests/**/*", "**/routeTree.gen.ts"],
+  "entry": ["src/index.tsx", "tests/**/*.test.ts"],
+  "ignorePatterns": ["docs/**/*", "**/routeTree.gen.ts"],
+  "dynamicallyLoaded": ["scripts/track-add-once.ts", "tests/test-utils/setup.ts"],
   "rules": {}
 }

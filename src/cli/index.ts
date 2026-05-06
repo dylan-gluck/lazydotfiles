@@ -7,7 +7,7 @@ import { statusHandler } from "./handlers/status";
 import { syncHandler } from "./handlers/sync";
 import type { CliDeps } from "./types";
 
-export type { CliDeps, CliIO } from "./types";
+export type { CliDeps } from "./types";
 
 type Subcommand = "status" | "log" | "add" | "rm" | "config" | "sync" | "remote";
 
