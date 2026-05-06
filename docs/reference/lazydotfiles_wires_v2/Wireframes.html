@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>ldf — V2 wireframes</title>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+  body { margin: 0; background: #f0eee9; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .term-frame {
+    width: 100%;
+    height: 100%;
+    background: #fafaf7;
+    color: #1a1a1a;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<script type="text/babel" src="wf-shared.jsx"></script>
+<script type="text/babel" src="wf-v2.jsx"></script>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "fullQueue": true,
+  "dirty": false
+}/*EDITMODE-END*/;
+
+function Frame({ children }) {
+  return <div className="term-frame">{children}</div>;
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="v2" title="ldf v2 — three views" subtitle="status (margin-note) · files (two-col tracked+untracked / detail) · logs (two-col revisions / diff)">
+          <DCArtboard id="status" label="1 · status" width={860} height={680}>
+            <Frame><V2Status tweaks={tweaks} /></Frame>
+          </DCArtboard>
+          <DCArtboard id="files" label="2 · files" width={1080} height={680}>
+            <Frame><V2Files tweaks={tweaks} /></Frame>
+          </DCArtboard>
+          <DCArtboard id="logs" label="3 · logs" width={1080} height={680}>
+            <Frame><V2Logs tweaks={tweaks} /></Frame>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="State">
+          <TweakToggle label="Full untracked queue" value={tweaks.fullQueue} onChange={v => setTweak("fullQueue", v)} hint="Off = empty queue empty-state" />
+          <TweakToggle label="Ahead/behind > 0" value={tweaks.dirty} onChange={v => setTweak("dirty", v)} hint="Toggles ↑3 ↓1 vs ↑0 ↓0 in header" />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>

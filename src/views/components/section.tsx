@@ -17,7 +17,7 @@ export function Section({ children }: SectionProps): ReactNode {
       padding={1}
       border={["bottom"]}
       borderColor={t.fg.muted}
-      flexGrow={1}
+      flexGrow={0}
       flexShrink={0}
       overflow="hidden"
     >

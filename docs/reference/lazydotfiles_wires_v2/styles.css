@@ -1,0 +1,220 @@
+/* Wireframe schematic styles for ldf consolidated TUI */
+
+:root {
+  --paper: #fafaf7;
+  --ink: #1a1a1a;
+  --ink-soft: #555;
+  --ink-faint: #999;
+  --ink-ghost: #c8c8c4;
+  --rule: #1a1a1a;
+  --hilite: #1a1a1a;
+  --mark-bg: #1a1a1a;
+  --mark-fg: #fafaf7;
+  --warn: #b13a2e;
+  --warn-bg: #fde4e0;
+}
+
+.wf {
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  white-space: pre;
+  overflow: hidden;
+  letter-spacing: 0;
+}
+
+.wf * { box-sizing: border-box; }
+
+/* Top tab strip */
+.wf-tabs {
+  display: flex;
+  gap: 1ch;
+  padding: 0 2ch;
+  border-bottom: 1px dashed var(--ink-ghost);
+  height: 24px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.wf-tab { color: var(--ink-faint); }
+.wf-tab--active { color: var(--ink); font-weight: 700; }
+.wf-tab--active::before { content: "›"; color: var(--ink); margin-right: 0.3ch; }
+.wf-sep { color: var(--ink-ghost); }
+
+/* Header / status row */
+.wf-header {
+  padding: 1ch 2ch 0.6ch 2ch;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-shrink: 0;
+}
+.wf-header__path { font-weight: 700; }
+.wf-header__meta { color: var(--ink-soft); }
+.wf-header__right { color: var(--ink-soft); }
+.wf-header__right b { color: var(--ink); font-weight: 700; }
+.wf-dirty { color: var(--ink); font-weight: 700; background: var(--mark-bg); color: var(--mark-fg); padding: 0 1ch;}
+
+/* Section labels (margin-fg style) */
+.wf-section-label {
+  color: var(--ink-faint);
+  text-transform: lowercase;
+  padding: 0 2ch;
+  margin-top: 0.6ch;
+  font-weight: 400;
+}
+
+.wf-rule {
+  border: 0;
+  border-top: 1px dashed var(--ink-ghost);
+  margin: 0;
+}
+
+/* Body and columns */
+.wf-body { flex: 1 1 auto; display: flex; min-height: 0; }
+.wf-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; padding: 0 2ch; overflow: hidden;}
+.wf-col + .wf-col { border-left: 1px dashed var(--ink-ghost); }
+.wf-col-narrow { flex: 0 0 28ch; }
+.wf-col-wide { flex: 1 1 0; }
+
+/* Lists */
+.wf-list { padding: 0; margin: 0; }
+.wf-row { padding: 0 2ch; }
+.wf-row .cur { display: inline-block; width: 2ch; color: var(--ink); }
+.wf-row--focus { font-weight: 700; }
+.wf-row--focus .cur::before { content: "›"; }
+.wf-row--dim { color: var(--ink-soft); }
+.wf-row--ghost { color: var(--ink-faint); }
+.wf-row--ok { color: var(--ink); }
+.wf-row--ok::after { content: ""; }
+.wf-tag-ok { color: var(--ink); font-weight: 700; margin-left: 1ch; }
+.wf-tag-warn { color: var(--warn); font-weight: 700; margin-left: 1ch; }
+.wf-tag-dim { color: var(--ink-faint); margin-left: 1ch; }
+
+/* Footer */
+.wf-footer {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  flex-shrink: 0;
+  border-top: 1px dashed var(--ink-ghost);
+  padding-left: 0;
+  background: var(--paper);
+}
+.wf-footer__chip {
+  background: var(--mark-bg);
+  color: var(--mark-fg);
+  padding: 0 1ch;
+  font-weight: 700;
+  margin-right: 1ch;
+  height: 22px;
+  display: flex; align-items: center;
+}
+.wf-footer__bindings { flex: 1 1 0; min-width: 0; overflow: hidden; color: var(--ink-soft); }
+.wf-footer__bindings b { color: var(--ink); font-weight: 700; }
+.wf-footer__path { color: var(--ink-faint); padding-right: 2ch; }
+
+/* Annotation arrows */
+.wf-anno {
+  position: absolute;
+  font-family: "Caveat", "Comic Sans MS", cursive;
+  font-size: 14px;
+  color: var(--warn);
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+.wf-anno svg { display: block; overflow: visible; }
+
+/* Section divider used inside one column */
+.wf-dim-rule {
+  margin: 1lh 2ch;
+  border: 0;
+  border-top: 1px dotted var(--ink-ghost);
+}
+.wf-section-h {
+  padding: 1lh 2ch 0;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+/* Each section element gets 1 line padding top + bottom */
+.wf-section {
+  padding: 1lh 0;
+}
+.wf-section + .wf-section {
+  border-top: 1px dotted var(--ink-ghost);
+}
+
+/* Shared line-numbered code block (used in files contents + logs diff) */
+.wf-code {
+  padding: 0 2ch;
+  white-space: pre;
+  font: inherit;
+}
+.wf-code__line { display: flex; }
+.wf-code__num {
+  color: var(--ink-ghost);
+  flex: 0 0 auto;
+  width: 4ch;
+  text-align: right;
+  padding-right: 1ch;
+  user-select: none;
+}
+.wf-code__txt { white-space: pre; }
+.wf-code__txt--add { color: var(--ink); font-weight: 700; }
+.wf-code__txt--del { color: var(--warn); }
+.wf-code__txt--hunk { color: var(--ink-faint); }
+.wf-section-h .count { color: var(--ink); font-weight: 700; }
+
+/* Inline preview block (discovery detail) */
+.wf-preview {
+  margin: 0 2ch 0.4ch 4ch;
+  padding: 0.4ch 1ch;
+  border-left: 2px solid var(--ink);
+  background: #f1efea;
+  color: var(--ink-soft);
+}
+.wf-preview .ttl { color: var(--ink); font-weight: 700; }
+.wf-preview .meta { color: var(--ink-faint); }
+
+/* Stack bars (sparkline-ish) */
+.wf-bar {
+  display: inline-block;
+  height: 0.8em;
+  background: var(--ink);
+  vertical-align: -1px;
+}
+
+/* Ascii-rough box for empty states */
+.wf-empty {
+  padding: 2ch;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.wf-empty .ttl { color: var(--ink); font-weight: 700; }
+
+/* Mini map / legend */
+.wf-legend {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-family: "Caveat", "Comic Sans MS", cursive;
+  font-size: 13px;
+  color: var(--warn);
+  background: rgba(255,255,255,0.85);
+  padding: 4px 8px;
+  border: 1px dashed var(--warn);
+  border-radius: 2px;
+  pointer-events: none;
+  white-space: pre-wrap;
+  max-width: 22ch;
+  line-height: 1.3;
+}
+
+/* hide trailing whitespace artifacts in <pre> rows */
+.wf pre { margin: 0; font: inherit; white-space: pre; }
