@@ -1,4 +1,4 @@
-import { createContext, useContext, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 import { DomainError } from "../domain/errors";
 import type { ActorRuntime } from "./runtime";
 import type { Event, Message } from "./types";
@@ -20,15 +20,14 @@ export function useActor<S, M extends Message = Message, E extends Event = Event
 ): { state: S; send: (msg: M) => void } {
   const runtime = useActorRuntime();
   const actor = runtime.get<S, M, E>(id);
-  const state = useSyncExternalStore(
-    (onChange) => actor.subscribe(() => onChange()),
-    () => actor.getState(),
-    () => actor.getState(),
-  );
+  const subscribe = useCallback((onChange: () => void) => actor.subscribe(onChange), [actor]);
+  const getState = useCallback(() => actor.getState(), [actor]);
+  const state = useSyncExternalStore(subscribe, getState, getState);
   return { state, send: actor.send };
 }
 
 const NOOP_UNSUBSCRIBE = (): void => {};
+const RETURN_NULL = (): null => null;
 
 /**
  * Read an actor's state without throwing when the runtime context is absent.
@@ -37,9 +36,10 @@ const NOOP_UNSUBSCRIBE = (): void => {};
  */
 export function useActorStateSafe<S>(id: string): S | null {
   const rt = useContext(ActorRuntimeContext);
-  return useSyncExternalStore(
-    (cb) => (rt === null ? NOOP_UNSUBSCRIBE : rt.get<S>(id).subscribe(() => cb())),
-    () => (rt === null ? null : rt.get<S>(id).getState()),
-    () => null,
+  const subscribe = useCallback(
+    (cb: () => void) => (rt === null ? NOOP_UNSUBSCRIBE : rt.get<S>(id).subscribe(cb)),
+    [rt, id],
   );
+  const getState = useCallback(() => (rt === null ? null : rt.get<S>(id).getState()), [rt, id]);
+  return useSyncExternalStore(subscribe, getState, RETURN_NULL);
 }

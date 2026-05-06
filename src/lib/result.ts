@@ -3,11 +3,11 @@ export type Err<E> = { readonly ok: false; readonly error: E };
 export type Result<T, E> = Ok<T> | Err<E>;
 
 export function ok<T>(value: T): Ok<T> {
-  return Object.freeze({ ok: true, value });
+  return { ok: true, value };
 }
 
 export function err<E>(error: E): Err<E> {
-  return Object.freeze({ ok: false, error });
+  return { ok: false, error };
 }
 
 export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {

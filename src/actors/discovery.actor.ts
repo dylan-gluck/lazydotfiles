@@ -142,6 +142,24 @@ function applyDecision(
   return { state: { ...state, queue }, candidate: changed };
 }
 
+/**
+ * Walk `state.queue`, applying `f` to each candidate. If any element returns a
+ * different reference, return state with the new queue; otherwise return state
+ * unchanged so subscribers don't see spurious updates.
+ */
+function updateQueueIfChanged(
+  state: DiscoveryState,
+  f: (c: DiscoveryCandidate) => DiscoveryCandidate,
+): DiscoveryState {
+  let changed = false;
+  const queue = state.queue.map((c) => {
+    const next = f(c);
+    if (next !== c) changed = true;
+    return next;
+  });
+  return changed ? { ...state, queue } : state;
+}
+
 export const discoveryReducer: Reducer<
   DiscoveryState,
   DiscoveryMessage,
@@ -274,28 +292,18 @@ export const discoveryReducer: Reducer<
     case "commitAck":
       return { state, events: [], effects: [] };
     case "revertAcceptByPath": {
-      let changed = false;
-      const queue = state.queue.map((c) => {
-        if (c.path !== msg.payload.path || c.status !== "accepted") return c;
-        changed = true;
-        return { ...c, status: "pending" as const };
-      });
-      return changed
-        ? { state: { ...state, queue }, events: [], effects: [] }
-        : { state, events: [], effects: [] };
+      const next = updateQueueIfChanged(state, (c) =>
+        c.path === msg.payload.path && c.status === "accepted" ? { ...c, status: "pending" } : c,
+      );
+      return { state: next, events: [], effects: [] };
     }
     case "restoreStatuses": {
       const targets = new Map(msg.payload.entries.map((e) => [e.id, e.status]));
-      let changed = false;
-      const queue = state.queue.map((c) => {
-        const next = targets.get(c.id);
-        if (next === undefined || next === c.status) return c;
-        changed = true;
-        return { ...c, status: next };
+      const next = updateQueueIfChanged(state, (c) => {
+        const status = targets.get(c.id);
+        return status === undefined || status === c.status ? c : { ...c, status };
       });
-      return changed
-        ? { state: { ...state, queue }, events: [], effects: [] }
-        : { state, events: [], effects: [] };
+      return { state: next, events: [], effects: [] };
     }
   }
 };

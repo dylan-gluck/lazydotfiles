@@ -117,6 +117,36 @@ function toRel(home: string, abs: string): string {
   return relative(home, abs).split(sep).join("/");
 }
 
+/**
+ * Single dir-entry pass shared by `siblings()`. Pushes files to `out` and
+ * directories with budget remaining to `queue`. `skipName` is honored at the
+ * starting depth (the focal file itself); pass `null` for sub-dirs.
+ */
+function processEntries(
+  entries: readonly {
+    name: string;
+    isDirectory(): boolean;
+    isFile(): boolean;
+    isSymbolicLink(): boolean;
+  }[],
+  dir: string,
+  remaining: number,
+  skipName: string | null,
+  queue: { dir: string; remaining: number }[],
+  out: string[],
+): void {
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (HARD_STOP_DIRS.has(entry.name)) continue;
+      if (remaining > 1) queue.push({ dir: full, remaining: remaining - 1 });
+    } else if (entry.isFile() || entry.isSymbolicLink()) {
+      if (entry.name === skipName) continue;
+      out.push(full);
+    }
+  }
+}
+
 async function* walk(root: string): AsyncIterable<{ path: string; isDir: boolean }> {
   let dir;
   try {
@@ -164,15 +194,7 @@ export function createFsScannerRepository(): FsScannerRepository {
       }
       const out: string[] = [];
       const queue: { dir: string; remaining: number }[] = [];
-      for (const entry of entries) {
-        const full = join(parent, entry.name);
-        if (entry.isDirectory()) {
-          if (HARD_STOP_DIRS.has(entry.name)) continue;
-          if (depth > 1) queue.push({ dir: full, remaining: depth - 1 });
-        } else if ((entry.isFile() || entry.isSymbolicLink()) && entry.name !== skip) {
-          out.push(full);
-        }
-      }
+      processEntries(entries, parent, depth, skip, queue, out);
       while (queue.length > 0) {
         const head = queue.shift()!;
         let subEntries;
@@ -181,15 +203,7 @@ export function createFsScannerRepository(): FsScannerRepository {
         } catch {
           continue;
         }
-        for (const entry of subEntries) {
-          const full = join(head.dir, entry.name);
-          if (entry.isDirectory()) {
-            if (HARD_STOP_DIRS.has(entry.name)) continue;
-            if (head.remaining > 1) queue.push({ dir: full, remaining: head.remaining - 1 });
-          } else if (entry.isFile() || entry.isSymbolicLink()) {
-            out.push(full);
-          }
-        }
+        processEntries(subEntries, head.dir, head.remaining, null, queue, out);
       }
       return ok(out);
     },

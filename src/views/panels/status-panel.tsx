@@ -120,26 +120,18 @@ export function StatusPanel({
 
   const focused = focusable[focusIdx];
   const focusedKind: RowKind | null = focused?.kind ?? null;
-  const bindings = useMemo<readonly PanelBinding[]>(() => {
+  const [bindings, extras] = useMemo<
+    readonly [readonly PanelBinding[], readonly PanelBinding[]]
+  >(() => {
     switch (focusedKind) {
       case "tracked":
-        return TRACKED_BINDINGS;
+        return [TRACKED_BINDINGS, TRACKED_EXTRAS];
       case "untracked":
-        return UNTRACKED_BINDINGS;
+        return [UNTRACKED_BINDINGS, UNTRACKED_EXTRAS];
       case "op":
-        return OP_BINDINGS;
+        return [OP_BINDINGS, NO_EXTRAS];
       default:
-        return DEFAULT_BINDINGS;
-    }
-  }, [focusedKind]);
-  const extras = useMemo<readonly PanelBinding[]>(() => {
-    switch (focusedKind) {
-      case "tracked":
-        return TRACKED_EXTRAS;
-      case "untracked":
-        return UNTRACKED_EXTRAS;
-      default:
-        return NO_EXTRAS;
+        return [DEFAULT_BINDINGS, NO_EXTRAS];
     }
   }, [focusedKind]);
   usePublishPanelBindings(bindings);
@@ -147,50 +139,37 @@ export function StatusPanel({
 
   useKeyboard((event) => {
     if (confirms.active) return;
+    if (event.name === "j" || event.name === "down") {
+      if (focusable.length > 0) setFocusIdx((i) => Math.min(i + 1, focusable.length - 1));
+      return;
+    }
+    if (event.name === "k" || event.name === "up") {
+      if (focusable.length > 0) setFocusIdx((i) => Math.max(i - 1, 0));
+      return;
+    }
+    const here = focusable[focusIdx];
+    if (here === undefined) return;
     switch (event.name) {
-      case "j":
-      case "down":
-        if (focusable.length > 0) {
-          setFocusIdx((i) => Math.min(i + 1, focusable.length - 1));
-        }
+      case "return":
+        if (here.kind === "tracked") onViewLog?.();
+        else if (here.kind === "untracked") onOpenFiles?.();
+        else if (here.kind === "op" && here.opId !== undefined) onViewLog?.(here.opId);
         return;
-      case "k":
-      case "up":
-        if (focusable.length > 0) setFocusIdx((i) => Math.max(i - 1, 0));
-        return;
-      case "return": {
-        const here = focusable[focusIdx];
-        if (here === undefined) return;
-        if (here.kind === "tracked") {
-          onViewLog?.();
-        } else if (here.kind === "untracked") {
-          onOpenFiles?.();
-        } else if (here.kind === "op" && here.opId !== undefined) {
-          onViewLog?.(here.opId);
-        }
-        return;
-      }
-      case "u": {
-        const here = focusable[focusIdx];
-        if (here?.kind === "tracked" && here.trackedFile !== undefined) {
+      case "u":
+        if (here.kind === "tracked" && here.trackedFile !== undefined) {
           confirms.promptUntrack(here.trackedFile);
         }
         return;
-      }
-      case "t": {
-        const here = focusable[focusIdx];
-        if (here?.kind === "untracked" && here.groupSegment !== undefined) {
+      case "t":
+        if (here.kind === "untracked" && here.groupSegment !== undefined) {
           confirms.promptTrackGroup(here.groupSegment);
         }
         return;
-      }
-      case "i": {
-        const here = focusable[focusIdx];
-        if (here?.kind === "untracked" && here.groupSegment !== undefined) {
+      case "i":
+        if (here.kind === "untracked" && here.groupSegment !== undefined) {
           confirms.promptIgnoreGroup(here.groupSegment);
         }
         return;
-      }
     }
   });
 

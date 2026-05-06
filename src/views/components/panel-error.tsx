@@ -1,8 +1,8 @@
 import { TextAttributes } from "@opentui/core";
 import type { ReactNode } from "react";
+import { formatServiceError } from "../../lib/format";
 import type { ServiceError } from "../../services/types";
 import { useTheme } from "../theme";
-import { summarizeServiceError } from "./summarize-error";
 
 export interface PanelErrorProps {
   readonly title: string;
@@ -17,7 +17,7 @@ export function PanelError({ title, error, footer }: PanelErrorProps): ReactNode
       <text fg={t.fg.danger} attributes={TextAttributes.BOLD}>
         {title}
       </text>
-      <text fg={t.fg.default}>{summarizeServiceError(error)}</text>
+      <text fg={t.fg.default}>{formatServiceError(error, { brief: true })}</text>
       {footer ?? null}
     </box>
   );

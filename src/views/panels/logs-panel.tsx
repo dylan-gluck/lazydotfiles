@@ -107,25 +107,26 @@ export function LogsPanel({ model, onYank }: LogsPanelProps): ReactNode {
     model.loadDiff(focused.opId);
   }, [focused?.opId]);
 
+  const step = (dir: 1 | -1): void => {
+    if (model.operations.length === 0) return;
+    const idx = model.operations.findIndex((o) => o.opId === model.focusId);
+    const target =
+      dir === 1 ? Math.min(idx + 1, model.operations.length - 1) : Math.max(idx - 1, 0);
+    const next = model.operations[target];
+    if (next !== undefined) model.focus(next.opId);
+  };
+
   useKeyboard((event) => {
     if (pending !== null) return;
     switch (event.name) {
       case "j":
-      case "down": {
-        if (model.operations.length === 0) return;
-        const idx = model.operations.findIndex((o) => o.opId === model.focusId);
-        const next = model.operations[Math.min(idx + 1, model.operations.length - 1)];
-        if (next !== undefined) model.focus(next.opId);
+      case "down":
+        step(1);
         return;
-      }
       case "k":
-      case "up": {
-        if (model.operations.length === 0) return;
-        const idx = model.operations.findIndex((o) => o.opId === model.focusId);
-        const next = model.operations[Math.max(idx - 1, 0)];
-        if (next !== undefined) model.focus(next.opId);
+      case "up":
+        step(-1);
         return;
-      }
       case "return":
         if (focused !== null) model.loadDiff(focused.opId);
         return;
