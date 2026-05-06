@@ -1,5 +1,5 @@
 import { useKeyboard } from "@opentui/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { HomeQueueGroup, UseHomePanel } from "../../controllers/home.controller";
 import type { Operation } from "../../domain/repo";
 import type { TrackedFile } from "../../domain/tracked-file";
@@ -14,29 +14,20 @@ import { relativeAge } from "../lib/relative-age";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 
-const BINDINGS: readonly PanelBinding[] = [
-  { keys: "j/k", description: "move" },
-  { keys: "enter", description: "open" },
-  { keys: "2", description: "discover" },
-  { keys: "3", description: "log" },
-  { keys: "s", description: "sync" },
-];
-
 const TRACKED_PATH_MAX = 60;
 const QUEUE_NAME_MAX = 50;
 const OP_DESC_MAX = 60;
+const REMOTE_LABEL_MAX = 60;
 
-export interface HomePanelProps {
+export interface StatusPanelProps {
   readonly model: UseHomePanel;
-  /** Open the log scoped to a tracked file's target path. */
+  /** Open the logs view scoped to a tracked file's target path. */
   onViewLog?(target: string): void;
-  /** Navigate to the discovery view (typically when enter on a queue group). */
-  onOpenDiscover?(): void;
-  /** Navigate to the sync view (the `s` binding). */
-  onOpenSync?(): void;
+  /** Switch to the files view (typically when enter on an untracked group). */
+  onOpenFiles?(): void;
 }
 
-type RowKind = "tracked" | "queue" | "op";
+type RowKind = "tracked" | "untracked" | "op";
 
 interface FocusableRow {
   readonly kind: RowKind;
@@ -44,32 +35,71 @@ interface FocusableRow {
   readonly trackedTarget?: string;
 }
 
-export function HomePanel({
-  model,
-  onViewLog,
-  onOpenDiscover,
-  onOpenSync,
-}: HomePanelProps): ReactNode {
-  const t = useTheme();
-  usePublishPanelLabel("home");
-  usePublishPanelBindings(BINDINGS);
+const TRACKED_BINDINGS: readonly PanelBinding[] = [
+  { keys: "↑/↓", description: "select" },
+  { keys: "enter", description: "details" },
+  { keys: "u", description: "untrack" },
+  { keys: "s", description: "sync" },
+];
+const UNTRACKED_BINDINGS: readonly PanelBinding[] = [
+  { keys: "↑/↓", description: "select" },
+  { keys: "enter", description: "details" },
+  { keys: "t", description: "track" },
+  { keys: "i", description: "ignore" },
+  { keys: "s", description: "sync" },
+];
+const OP_BINDINGS: readonly PanelBinding[] = [
+  { keys: "↑/↓", description: "select" },
+  { keys: "enter", description: "details" },
+  { keys: "f", description: "fetch" },
+  { keys: "p", description: "push" },
+  { keys: "s", description: "sync" },
+];
+const DEFAULT_BINDINGS: readonly PanelBinding[] = TRACKED_BINDINGS;
 
-  const focusable: readonly FocusableRow[] = [
-    ...model.tracked.map<FocusableRow>((tf) => ({
-      kind: "tracked",
-      id: tf.id,
-      trackedTarget: tf.target,
-    })),
-    ...model.queueGroups.map<FocusableRow>((g) => ({
-      kind: "queue",
-      id: `q:${g.segment}`,
-    })),
-    ...model.recentOperations.map<FocusableRow>((op) => ({
-      kind: "op",
-      id: `o:${op.id}`,
-    })),
-  ];
+/**
+ * View 1 — `status`. Margin-note manuscript layout. One scrollable column with
+ * four sections: `tracked`, `untracked`, `remote`, `logs`.
+ */
+export function StatusPanel({ model, onViewLog, onOpenFiles }: StatusPanelProps): ReactNode {
+  const t = useTheme();
+  usePublishPanelLabel("status");
+
+  const focusable: readonly FocusableRow[] = useMemo(
+    () => [
+      ...model.tracked.map<FocusableRow>((tf) => ({
+        kind: "tracked",
+        id: tf.id,
+        trackedTarget: tf.target,
+      })),
+      ...model.queueGroups.map<FocusableRow>((g) => ({
+        kind: "untracked",
+        id: `q:${g.segment}`,
+      })),
+      ...model.recentOperations.map<FocusableRow>((op) => ({
+        kind: "op",
+        id: `o:${op.id}`,
+      })),
+    ],
+    [model.tracked, model.queueGroups, model.recentOperations],
+  );
   const [focusIdx, setFocusIdx] = useState(0);
+
+  const focused = focusable[focusIdx];
+  const focusedKind: RowKind | null = focused?.kind ?? null;
+  const bindings = useMemo<readonly PanelBinding[]>(() => {
+    switch (focusedKind) {
+      case "tracked":
+        return TRACKED_BINDINGS;
+      case "untracked":
+        return UNTRACKED_BINDINGS;
+      case "op":
+        return OP_BINDINGS;
+      default:
+        return DEFAULT_BINDINGS;
+    }
+  }, [focusedKind]);
+  usePublishPanelBindings(bindings);
 
   useKeyboard((event) => {
     switch (event.name) {
@@ -88,35 +118,40 @@ export function HomePanel({
         if (here === undefined) return;
         if (here.kind === "tracked" && here.trackedTarget !== undefined) {
           onViewLog?.(here.trackedTarget);
-        } else if (here.kind === "queue") {
-          onOpenDiscover?.();
+        } else if (here.kind === "untracked") {
+          onOpenFiles?.();
         } else if (here.kind === "op") {
           onViewLog?.("");
         }
         return;
       }
-      case "s":
-        onOpenSync?.();
-        return;
     }
   });
 
-  const focused = focusable[focusIdx];
   const isFocused = (kind: RowKind, id: string): boolean =>
     focused !== undefined && focused.kind === kind && focused.id === id;
+
+  const aheadBehind = `↑${model.sync.ahead} ↓${model.sync.behind}`;
+  const remoteLabel = truncateToWidth(model.sync.remote ?? "(no remote)", REMOTE_LABEL_MAX);
+  const lastSyncLabel =
+    model.sync.lastSyncAt === null ? "never" : relativeAge(model.sync.lastSyncAt);
+  const autoLabel =
+    model.sync.autoInterval === null
+      ? "· auto-sync off"
+      : model.sync.nextAutoSyncIso === null
+        ? `· ${model.sync.autoInterval} · scheduled`
+        : `· ${model.sync.autoInterval} · next ${relativeAge(model.sync.nextAutoSyncIso)}`;
+  const autoMargin = model.sync.autoInterval ?? "off";
 
   return (
     <box flexDirection="column" flexGrow={1}>
       <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
         <Section>
-          <SectionRow
-            margin={`${model.trackedCount} tracked`}
-            body={<text fg={t.fg.heading}>tracked</text>}
-          />
+          <SectionRow margin={`${model.trackedCount} tracked`} body={<HeadingText text="tracked" />} />
           {model.tracked.length === 0 ? (
             <SectionRow
               margin="—"
-              body={<text fg={t.fg.muted}>nothing tracked yet · press 2 to discover</text>}
+              body={<text fg={t.fg.muted}>nothing tracked yet · press 2 to track files</text>}
             />
           ) : (
             model.tracked.map((tf) => (
@@ -140,8 +175,8 @@ export function HomePanel({
 
         <Section>
           <SectionRow
-            margin={model.queueCount > 0 ? `${model.queueCount} pending` : "queue empty"}
-            body={<text fg={t.fg.heading}>discovery</text>}
+            margin={model.queueCount > 0 ? `${model.queueCount} pending` : "0 pending"}
+            body={<HeadingText text="untracked" />}
           />
           {model.queueGroups.length === 0 ? (
             <SectionRow
@@ -153,7 +188,7 @@ export function HomePanel({
               <QueueGroupRow
                 key={g.segment}
                 group={g}
-                focused={isFocused("queue", `q:${g.segment}`)}
+                focused={isFocused("untracked", `q:${g.segment}`)}
               />
             ))
           )}
@@ -162,7 +197,7 @@ export function HomePanel({
               margin="…"
               body={
                 <text fg={t.fg.muted}>
-                  {`${model.queueGroupCount - model.queueGroups.length} more groups · press 2`}
+                  {`${model.queueGroupCount - model.queueGroups.length} more groups · enter to open`}
                 </text>
               }
             />
@@ -170,26 +205,9 @@ export function HomePanel({
         </Section>
 
         <Section>
-          <SectionRow
-            margin={model.dirty ? "1 dirty" : `↑${model.sync.ahead} ↓${model.sync.behind}`}
-            body={<text fg={t.fg.heading}>sync</text>}
-          />
-          <SectionRow
-            margin={model.sync.lastSyncAt === null ? "never" : relativeAge(model.sync.lastSyncAt)}
-            body={<text fg={t.fg.muted}>{`· ${model.sync.remote ?? "(no remote)"}`}</text>}
-          />
-          <SectionRow
-            margin={model.sync.autoInterval ?? "off"}
-            body={
-              <text fg={t.fg.muted}>
-                {model.sync.autoInterval === null
-                  ? "· auto-sync off"
-                  : model.sync.nextAutoSyncIso === null
-                    ? `· ${model.sync.autoInterval} · scheduled`
-                    : `· ${model.sync.autoInterval} · next ${relativeAge(model.sync.nextAutoSyncIso)}`}
-              </text>
-            }
-          />
+          <SectionRow margin={aheadBehind} body={<HeadingText text="remote" />} />
+          <SectionRow margin={lastSyncLabel} body={<text fg={t.fg.muted}>{`· ${remoteLabel}`}</text>} />
+          <SectionRow margin={autoMargin} body={<text fg={t.fg.muted}>{autoLabel}</text>} />
         </Section>
 
         <Section>
@@ -199,7 +217,7 @@ export function HomePanel({
                 ? `${model.recentOperations.length} of ${model.totalOperations}`
                 : "0 ops"
             }
-            body={<text fg={t.fg.heading}>recent</text>}
+            body={<HeadingText text="logs" />}
           />
           {model.recentOperations.length === 0 ? (
             <SectionRow margin="—" body={<text fg={t.fg.muted}>no operations yet</text>} />
@@ -220,6 +238,11 @@ export function HomePanel({
       ) : null}
     </box>
   );
+}
+
+function HeadingText({ text }: { readonly text: string }): ReactNode {
+  const t = useTheme();
+  return <text fg={t.fg.heading}>{text}</text>;
 }
 
 function TrackedRow({
@@ -255,11 +278,7 @@ function QueueGroupRow({
     <SectionRow
       focused={focused}
       margin={String(group.count)}
-      body={
-        <text fg={focused ? t.fg.focus : t.fg.muted}>
-          {`? ${segment}${focused ? "  enter triage" : ""}`}
-        </text>
-      }
+      body={<text fg={focused ? t.fg.focus : t.fg.muted}>{`? ${segment}`}</text>}
     />
   );
 }

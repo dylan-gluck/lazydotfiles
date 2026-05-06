@@ -16,6 +16,12 @@ function makeCtx(overrides: Partial<KeymapContext> = {}): KeymapContext {
     router: { navigate: () => Promise.resolve() } as unknown as KeymapContext["router"],
     renderer: { destroy: () => {} },
     ui: { toggleHelp: () => {} },
+    actions: {
+      sync: () => {},
+      fetch: () => {},
+      push: () => {},
+      rescan: () => {},
+    },
     inputActive: false,
     ...overrides,
   };

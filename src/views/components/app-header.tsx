@@ -1,31 +1,22 @@
-import { type ReactNode, useContext, useSyncExternalStore } from "react";
+import { TextAttributes } from "@opentui/core";
+import type { ReactNode } from "react";
 import { CONFIG_ACTOR_ID, type ConfigState } from "../../actors/config.actor";
 import { DISCOVERY_ACTOR_ID, type DiscoveryState } from "../../actors/discovery.actor";
 import { REPO_ACTOR_ID, type RepoState } from "../../actors/repo.actor";
-import { ActorRuntimeContext } from "../../actors/use-actor";
+import { useActorStateSafe } from "../../actors/use-actor";
 import { useOptionalServices } from "../../composition/services-context";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 
 const REPO_LABEL_MAX = 40;
-const NOOP_UNSUBSCRIBE = (): void => {};
+const HASH_LENGTH = 8;
 
 /**
- * Read an actor's state without throwing when the runtime context is absent.
- * Lets {@link AppHeader} render safely in isolated component tests that
- * don't wire the actor runtime.
- */
-function useActorStateSafe<S>(id: string): S | null {
-  const rt = useContext(ActorRuntimeContext);
-  return useSyncExternalStore(
-    (cb) => (rt === null ? NOOP_UNSUBSCRIBE : rt.get<S>(id).subscribe(() => cb())),
-    () => (rt === null ? null : rt.get<S>(id).getState()),
-    () => null,
-  );
-}
-
-/**
- * Top-of-frame header rendered globally inside {@link AppShell}. Pulls live
+ * Top-of-frame header rendered globally inside {@link AppShell}. v2 layout:
+ *
+ *   ~/dotfiles  ·  main @ <short-hash>            <n> tracked · <m> untracked
+ *
+ * Counts reflect repo-wide totals, not the current view's filter. Pulls live
  * state from the repo / config / discovery actors so it works on every route
  * with no per-route wiring. Falls back to neutral placeholders when actor
  * state is unavailable.
@@ -47,10 +38,10 @@ export function AppHeader(): ReactNode {
         : "~/dotfiles";
 
   const head = repo?.operations[0];
-  const branchSummary = head !== undefined ? `main @ ${head.id.slice(0, 8)}` : "main";
-  const dirty = repo?.dirty ?? false;
-  const queueCount = discovery?.queue.filter((c) => c.status === "pending").length ?? 0;
-  const summary = queueCount > 0 ? `${queueCount} candidates` : "queue empty";
+  const branchSummary =
+    head !== undefined ? `main @ ${head.id.slice(0, HASH_LENGTH)}` : "main";
+  const trackedCount = repo?.tracked.length ?? 0;
+  const untrackedCount = discovery?.queue.filter((c) => c.status === "pending").length ?? 0;
   const repoLabel = truncateToWidth(tildify(repoRoot, home), REPO_LABEL_MAX);
 
   return (
@@ -65,14 +56,16 @@ export function AppHeader(): ReactNode {
       borderColor={t.fg.muted}
     >
       <box flexDirection="row" gap={t.space.sm}>
-        <text fg={t.fg.heading}>{repoLabel}</text>
+        <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
+          {repoLabel}
+        </text>
         <text fg={t.fg.subtle}>·</text>
         <text fg={t.fg.muted}>{branchSummary}</text>
       </box>
       <box flexDirection="row" gap={t.space.sm}>
-        <text fg={dirty ? t.fg.danger : t.fg.success}>{dirty ? "dirty" : "clean"}</text>
+        <text fg={t.fg.muted}>{`${trackedCount} tracked`}</text>
         <text fg={t.fg.subtle}>·</text>
-        <text fg={t.fg.muted}>{summary}</text>
+        <text fg={t.fg.muted}>{`${untrackedCount} untracked`}</text>
       </box>
     </box>
   );

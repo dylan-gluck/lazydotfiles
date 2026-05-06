@@ -1,29 +1,22 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useHomePanel } from "../controllers/home.controller";
-import { HomePanel } from "../views/panels/home-panel";
+import { StatusPanel } from "../views/panels/status-panel";
 
 export const Route = createFileRoute("/")({
-  component: Home,
+  component: Status,
 });
 
-function Home() {
+function Status() {
   const model = useHomePanel();
   const router = useRouter();
   return (
-    <HomePanel
+    <StatusPanel
       model={model}
-      onViewLog={(target) => {
-        if (target.length > 0) {
-          void router.navigate({ to: "/log", search: { file: target } });
-        } else {
-          void router.navigate({ to: "/log" });
-        }
+      onViewLog={() => {
+        void router.navigate({ to: "/logs" });
       }}
-      onOpenDiscover={() => {
-        void router.navigate({ to: "/discover" });
-      }}
-      onOpenSync={() => {
-        void router.navigate({ to: "/sync" });
+      onOpenFiles={() => {
+        void router.navigate({ to: "/files" });
       }}
     />
   );
