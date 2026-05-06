@@ -38,8 +38,7 @@ export function AppHeader(): ReactNode {
         : "~/dotfiles";
 
   const head = repo?.operations[0];
-  const branchSummary =
-    head !== undefined ? `main @ ${head.id.slice(0, HASH_LENGTH)}` : "main";
+  const branchSummary = head !== undefined ? `main @ ${head.id.slice(0, HASH_LENGTH)}` : "main";
   const trackedCount = repo?.tracked.length ?? 0;
   const untrackedCount = discovery?.queue.filter((c) => c.status === "pending").length ?? 0;
   const repoLabel = truncateToWidth(tildify(repoRoot, home), REPO_LABEL_MAX);

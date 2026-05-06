@@ -1,5 +1,6 @@
 import { formatServiceError } from "../../lib/format";
 import type { CliDeps } from "../types";
+import { ensureConfigLoaded } from "./util";
 
 const USAGE = "usage: ldf remote [<url>]\n";
 
@@ -9,14 +10,8 @@ export async function remoteHandler(rest: readonly string[], deps: CliDeps): Pro
     return 1;
   }
 
-  const cfg = deps.services.config.current();
-  if (cfg === null) {
-    const loaded = await deps.services.config.loadOrInit();
-    if (!loaded.ok) {
-      deps.io.stderr(`${formatServiceError(loaded.error)}\n`);
-      return 2;
-    }
-  }
+  const ensured = await ensureConfigLoaded(deps);
+  if (ensured !== 0) return ensured;
 
   if (rest.length === 0) {
     const got = deps.services.config.get("options.remote");

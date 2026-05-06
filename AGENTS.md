@@ -2,22 +2,21 @@ You are the primary maintainer of the `lazydotfiles` repo
 
 ## Instructions
 
-- ALWAYS `caveman:full`, all interactions outputs
-- ALWAYS use skills when available
+- ALWAYS use `caveman:full`, all interactions outputs
 
 ### Skills
 
+- `caveman`
 - `opentui`
-- `Bun`
-- `mermaid-diagrams`
 - `pilotty`
-- `ui-ux-pro-max`
+- `bun`
 
 ## Project & Stack
 
-- Repo uses `jj` vcs, git backend
+- VCS: `jj` + git backend
 - Bun runtime, bun test, prefer builtins
-- App `opentui`, `react`, `tanstack`
+- App: `opentui`, `react`, `tanstack`
+- Code: `oxlint`, `oxfmt`, `tsc`
 
 ## Docs
 
@@ -42,4 +41,3 @@ Register: `product`. North Star: **"The Manuscript"** (typeset record of a worki
 
 [PRODUCT](PRODUCT.md) — strategy, users, anti-refs.
 [DESIGN](DESIGN.md) — visual system: ANSI tokens, text-attribute hierarchy, flat-by-default elevation, eight Named Rules.
-[DESIGN.json](DESIGN.json) — sidecar (color metadata, motion, drop-in component snippets).

@@ -3,8 +3,6 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { HomeQueueGroup, UseHomePanel } from "../../controllers/home.controller";
 import type { Operation } from "../../domain/repo";
 import type { TrackedFile } from "../../domain/tracked-file";
-import { ConfirmModal } from "../components/confirm-modal";
-import { useInputFocusEffect } from "../components/input-focus-context";
 import {
   type PanelBinding,
   usePublishPanelBindings,
@@ -13,6 +11,7 @@ import {
 } from "../components/panel-bindings-context";
 import { Section } from "../components/section";
 import { SectionRow } from "../components/section-row";
+import { useTrackingConfirms } from "../components/tracking-confirms";
 import { relativeAge } from "../lib/relative-age";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
@@ -69,9 +68,7 @@ const OP_BINDINGS: readonly PanelBinding[] = [
 ];
 const DEFAULT_BINDINGS: readonly PanelBinding[] = TRACKED_BINDINGS;
 
-const TRACKED_EXTRAS: readonly PanelBinding[] = [
-  { keys: "shift+U", description: "untrack group" },
-];
+const TRACKED_EXTRAS: readonly PanelBinding[] = [{ keys: "shift+U", description: "untrack group" }];
 const UNTRACKED_EXTRAS: readonly PanelBinding[] = [
   { keys: "shift+T", description: "track group" },
   { keys: "shift+I", description: "ignore group" },
@@ -115,12 +112,11 @@ export function StatusPanel({
     [model.tracked, model.queueGroups, model.recentOperations],
   );
   const [focusIdx, setFocusIdx] = useState(0);
-  const [pendingUntrack, setPendingUntrack] = useState<TrackedFile | null>(null);
-  const [pendingTrackGroup, setPendingTrackGroup] = useState<string | null>(null);
-  const [pendingIgnoreGroup, setPendingIgnoreGroup] = useState<string | null>(null);
-  useInputFocusEffect(
-    pendingUntrack !== null || pendingTrackGroup !== null || pendingIgnoreGroup !== null,
-  );
+  const confirms = useTrackingConfirms({
+    onUntrack: (file) => onUntrack?.(file.target),
+    onTrackGroup,
+    onIgnoreGroup,
+  });
 
   const focused = focusable[focusIdx];
   const focusedKind: RowKind | null = focused?.kind ?? null;
@@ -150,13 +146,7 @@ export function StatusPanel({
   usePublishPanelExtras(extras);
 
   useKeyboard((event) => {
-    if (
-      pendingUntrack !== null ||
-      pendingTrackGroup !== null ||
-      pendingIgnoreGroup !== null
-    ) {
-      return;
-    }
+    if (confirms.active) return;
     switch (event.name) {
       case "j":
       case "down":
@@ -183,21 +173,21 @@ export function StatusPanel({
       case "u": {
         const here = focusable[focusIdx];
         if (here?.kind === "tracked" && here.trackedFile !== undefined) {
-          setPendingUntrack(here.trackedFile);
+          confirms.promptUntrack(here.trackedFile);
         }
         return;
       }
       case "t": {
         const here = focusable[focusIdx];
         if (here?.kind === "untracked" && here.groupSegment !== undefined) {
-          setPendingTrackGroup(here.groupSegment);
+          confirms.promptTrackGroup(here.groupSegment);
         }
         return;
       }
       case "i": {
         const here = focusable[focusIdx];
         if (here?.kind === "untracked" && here.groupSegment !== undefined) {
-          setPendingIgnoreGroup(here.groupSegment);
+          confirms.promptIgnoreGroup(here.groupSegment);
         }
         return;
       }
@@ -223,7 +213,10 @@ export function StatusPanel({
     <box flexDirection="column" flexGrow={1}>
       <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
         <Section>
-          <SectionRow margin={`${model.trackedCount} tracked`} body={<HeadingText text="tracked" />} />
+          <SectionRow
+            margin={`${model.trackedCount} tracked`}
+            body={<HeadingText text="tracked" />}
+          />
           {model.tracked.length === 0 ? (
             <SectionRow
               margin="—"
@@ -287,7 +280,10 @@ export function StatusPanel({
 
         <Section>
           <SectionRow margin={aheadBehind} body={<HeadingText text="remote" />} />
-          <SectionRow margin={lastSyncLabel} body={<text fg={t.fg.muted}>{`· ${remoteLabel}`}</text>} />
+          <SectionRow
+            margin={lastSyncLabel}
+            body={<text fg={t.fg.muted}>{`· ${remoteLabel}`}</text>}
+          />
           <SectionRow margin={autoMargin} body={<text fg={t.fg.muted}>{autoLabel}</text>} />
         </Section>
 
@@ -318,47 +314,7 @@ export function StatusPanel({
         </box>
       ) : null}
 
-      {pendingUntrack !== null ? (
-        <ConfirmModal
-          title="Untrack file"
-          summary={`Untrack ${pendingUntrack.target}? The symlink is replaced with the file at its current dotfiles content; jj history is preserved.`}
-          paths={[pendingUntrack.target, pendingUntrack.source]}
-          confirmLabel="Untrack"
-          onConfirm={() => {
-            onUntrack?.(pendingUntrack.target);
-            setPendingUntrack(null);
-          }}
-          onCancel={() => setPendingUntrack(null)}
-        />
-      ) : null}
-
-      {pendingTrackGroup !== null ? (
-        <ConfirmModal
-          title="Track group"
-          summary={`Track every pending candidate under ${pendingTrackGroup}? Each will be moved into the dotfiles repo and replaced with a symlink.`}
-          paths={[pendingTrackGroup]}
-          confirmLabel="Track"
-          onConfirm={() => {
-            onTrackGroup?.(pendingTrackGroup);
-            setPendingTrackGroup(null);
-          }}
-          onCancel={() => setPendingTrackGroup(null)}
-        />
-      ) : null}
-
-      {pendingIgnoreGroup !== null ? (
-        <ConfirmModal
-          title="Ignore group"
-          summary={`Defer every pending candidate under ${pendingIgnoreGroup}? Future scans will skip them.`}
-          paths={[pendingIgnoreGroup]}
-          confirmLabel="Ignore"
-          onConfirm={() => {
-            onIgnoreGroup?.(pendingIgnoreGroup);
-            setPendingIgnoreGroup(null);
-          }}
-          onCancel={() => setPendingIgnoreGroup(null)}
-        />
-      ) : null}
+      {confirms.modal}
     </box>
   );
 }

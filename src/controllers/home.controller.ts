@@ -8,14 +8,11 @@ import { useOptionalServices } from "../composition/services-context";
 import type { Interval } from "../domain/config";
 import type { Operation } from "../domain/repo";
 import type { TrackedFile } from "../domain/tracked-file";
+import { groupQueueBySegment, type QueueSegmentGroup } from "../lib/path";
 import { INTERVAL_MS } from "../services/sync.scheduler";
 import type { ServiceError } from "../services/types";
 
-export interface HomeQueueGroup {
-  /** Top-level segment under the home dir (e.g. ".config", ".claude"). */
-  readonly segment: string;
-  readonly count: number;
-}
+export type HomeQueueGroup = QueueSegmentGroup;
 
 export interface UseHomePanel {
   readonly repoRoot: string;
@@ -55,35 +52,6 @@ function deriveRepoRoot(servicesHome: string | null, configHome: string | null):
   return "~/dotfiles";
 }
 
-function topSegment(absPath: string, home: string): string | null {
-  if (home.length > 0 && absPath.startsWith(`${home}/`)) {
-    const rest = absPath.slice(home.length + 1);
-    const slash = rest.indexOf("/");
-    return slash === -1 ? rest : rest.slice(0, slash);
-  }
-  // Fall back to the first non-empty segment.
-  const cleaned = absPath.startsWith("/") ? absPath.slice(1) : absPath;
-  const slash = cleaned.indexOf("/");
-  return slash === -1 ? (cleaned.length > 0 ? cleaned : null) : cleaned.slice(0, slash);
-}
-
-function groupQueueBySegment(
-  queue: readonly { path: string; status: string }[],
-  home: string,
-): readonly HomeQueueGroup[] {
-  const counts = new Map<string, number>();
-  for (const c of queue) {
-    if (c.status !== "pending") continue;
-    const seg = topSegment(c.path, home);
-    if (seg === null) continue;
-    counts.set(seg, (counts.get(seg) ?? 0) + 1);
-  }
-  const groups: HomeQueueGroup[] = [];
-  for (const [segment, count] of counts) groups.push({ segment, count });
-  groups.sort((a, b) => b.count - a.count || a.segment.localeCompare(b.segment));
-  return groups;
-}
-
 function nextAutoSyncIso(
   running: boolean,
   interval: Interval | null,
@@ -106,7 +74,6 @@ export function useHomePanel(): UseHomePanel {
     repo.send({ kind: "refresh", payload: undefined });
     sync.send({ kind: "refresh", payload: undefined });
     // mount-only refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const home = config.state.config?.path.home ?? services?.home ?? "";

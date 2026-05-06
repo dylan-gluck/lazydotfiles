@@ -6,6 +6,7 @@ import { AlignedRow } from "../components/aligned-row";
 import { CodeBlock, type CodeLine } from "../components/code-block";
 import { ConfirmModal } from "../components/confirm-modal";
 import { useInputFocusEffect } from "../components/input-focus-context";
+import { MetaRow } from "../components/meta-row";
 import {
   type PanelBinding,
   usePublishPanelBindings,
@@ -104,7 +105,6 @@ export function LogsPanel({ model, onYank }: LogsPanelProps): ReactNode {
     if (model.diff !== null && model.diff.opId === focused.opId) return;
     if (model.diffLoading) return;
     model.loadDiff(focused.opId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused?.opId]);
 
   useKeyboard((event) => {
@@ -152,13 +152,14 @@ export function LogsPanel({ model, onYank }: LogsPanelProps): ReactNode {
   return (
     <box flexDirection="column" flexGrow={1}>
       <box flexDirection="row" flexGrow={1} flexShrink={1} overflow="hidden">
-        <RevisionList
-          operations={model.operations}
-          focusId={model.focusId}
-          status={model.status}
-        />
+        <RevisionList operations={model.operations} focusId={model.focusId} status={model.status} />
         <box width={1} flexShrink={0} border={["right"]} borderColor={t.fg.muted} />
-        <RevisionDetail focused={focused} diffLines={diffLines} stats={stats} diffLoading={model.diffLoading} />
+        <RevisionDetail
+          focused={focused}
+          diffLines={diffLines}
+          stats={stats}
+          diffLoading={model.diffLoading}
+        />
       </box>
       {pending !== null
         ? (() => {
@@ -282,10 +283,7 @@ function RevisionDetail({
         <MetaRow label="at" value={focused.at} />
         <MetaRow label="files" value={filesLabel} />
         <MetaRow label="jj op" value={truncateToWidth(jjOp, META_VALUE_MAX)} />
-        <MetaRow
-          label="backup"
-          value={firstFile === null ? "—" : "press b to restore"}
-        />
+        <MetaRow label="backup" value={firstFile === null ? "—" : "press b to restore"} />
       </Section>
       <Section>
         <SectionTitle label="diff" meta={diffMeta} />
@@ -298,25 +296,5 @@ function RevisionDetail({
         )}
       </Section>
     </scrollbox>
-  );
-}
-
-const META_LABEL_WIDTH = 10;
-
-function MetaRow({
-  label,
-  value,
-}: {
-  readonly label: string;
-  readonly value: string;
-}): ReactNode {
-  const t = useTheme();
-  const padded =
-    label.length >= META_LABEL_WIDTH ? label : label + " ".repeat(META_LABEL_WIDTH - label.length);
-  return (
-    <box flexDirection="row">
-      <text fg={t.fg.muted}>{padded}</text>
-      <text fg={t.fg.default}>{value}</text>
-    </box>
   );
 }

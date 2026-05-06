@@ -8,80 +8,80 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as LogsRouteImport } from './routes/logs'
-import { Route as FilesRouteImport } from './routes/files'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as LogsRouteImport } from "./routes/logs";
+import { Route as FilesRouteImport } from "./routes/files";
+import { Route as IndexRouteImport } from "./routes/index";
 
 const LogsRoute = LogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
+  id: "/logs",
+  path: "/logs",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const FilesRoute = FilesRouteImport.update({
-  id: '/files',
-  path: '/files',
+  id: "/files",
+  path: "/files",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/files': typeof FilesRoute
-  '/logs': typeof LogsRoute
+  "/": typeof IndexRoute;
+  "/files": typeof FilesRoute;
+  "/logs": typeof LogsRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/files': typeof FilesRoute
-  '/logs': typeof LogsRoute
+  "/": typeof IndexRoute;
+  "/files": typeof FilesRoute;
+  "/logs": typeof LogsRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/files': typeof FilesRoute
-  '/logs': typeof LogsRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/files": typeof FilesRoute;
+  "/logs": typeof LogsRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/files' | '/logs'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/files' | '/logs'
-  id: '__root__' | '/' | '/files' | '/logs'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/" | "/files" | "/logs";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/files" | "/logs";
+  id: "__root__" | "/" | "/files" | "/logs";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  FilesRoute: typeof FilesRoute
-  LogsRoute: typeof LogsRoute
+  IndexRoute: typeof IndexRoute;
+  FilesRoute: typeof FilesRoute;
+  LogsRoute: typeof LogsRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/logs': {
-      id: '/logs'
-      path: '/logs'
-      fullPath: '/logs'
-      preLoaderRoute: typeof LogsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/files': {
-      id: '/files'
-      path: '/files'
-      fullPath: '/files'
-      preLoaderRoute: typeof FilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/logs": {
+      id: "/logs";
+      path: "/logs";
+      fullPath: "/logs";
+      preLoaderRoute: typeof LogsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/files": {
+      id: "/files";
+      path: "/files";
+      fullPath: "/files";
+      preLoaderRoute: typeof FilesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -89,7 +89,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FilesRoute: FilesRoute,
   LogsRoute: LogsRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

@@ -5,13 +5,10 @@ import { TRACK_ACTOR_ID, type TrackMessage, type TrackState } from "../actors/tr
 import { useActor } from "../actors/use-actor";
 import { useOptionalServices } from "../composition/services-context";
 import type { TrackedFile } from "../domain/tracked-file";
+import { groupQueueBySegment, type QueueSegmentGroup } from "../lib/path";
 import type { ServiceError } from "../services/types";
 
-export interface UntrackedGroup {
-  /** Top-level segment under the home dir (e.g. ".config", ".claude"). */
-  readonly segment: string;
-  readonly count: number;
-}
+export type UntrackedGroup = QueueSegmentGroup;
 
 export interface UseFilesPanel {
   readonly home: string;
@@ -26,34 +23,6 @@ export interface UseFilesPanel {
   remove(target: string): void;
 }
 
-function topSegment(absPath: string, home: string): string | null {
-  if (home.length > 0 && absPath.startsWith(`${home}/`)) {
-    const rest = absPath.slice(home.length + 1);
-    const slash = rest.indexOf("/");
-    return slash === -1 ? rest : rest.slice(0, slash);
-  }
-  const cleaned = absPath.startsWith("/") ? absPath.slice(1) : absPath;
-  const slash = cleaned.indexOf("/");
-  return slash === -1 ? (cleaned.length > 0 ? cleaned : null) : cleaned.slice(0, slash);
-}
-
-function groupQueueBySegment(
-  queue: readonly { path: string; status: string }[],
-  home: string,
-): readonly UntrackedGroup[] {
-  const counts = new Map<string, number>();
-  for (const c of queue) {
-    if (c.status !== "pending") continue;
-    const seg = topSegment(c.path, home);
-    if (seg === null) continue;
-    counts.set(seg, (counts.get(seg) ?? 0) + 1);
-  }
-  const groups: UntrackedGroup[] = [];
-  for (const [segment, count] of counts) groups.push({ segment, count });
-  groups.sort((a, b) => b.count - a.count || a.segment.localeCompare(b.segment));
-  return groups;
-}
-
 export function useFilesPanel(): UseFilesPanel {
   const services = useOptionalServices();
   const repo = useActor<RepoState>(REPO_ACTOR_ID);
@@ -63,7 +32,6 @@ export function useFilesPanel(): UseFilesPanel {
   useEffect(() => {
     // Mount-only refresh. The repo actor publishes tracked + ops; refreshing
     // here keeps focus snapshots fresh on view switch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const home = services?.home ?? "";

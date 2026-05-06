@@ -14,6 +14,7 @@ import { ok, type Result } from "../../src/lib/result";
 import type { Services } from "../../src/composition/services";
 import type { ConfigService } from "../../src/services/config.service";
 import type { ServiceError } from "../../src/services/types";
+import { baseRepoService } from "../test-utils/services-fake";
 
 function fakeConfigService(overrides: Partial<ConfigService> = {}): ConfigService {
   const defaults = defaultConfig();
@@ -44,16 +45,7 @@ function makeServices(config: ConfigService): Services {
         return ok({ config: defaultConfig(), initialized: false });
       },
     },
-    repo: {
-      head: async () => ok({} as never),
-      operations: async () => ok([]),
-      syncState: async () =>
-        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
-      dirty: async () => ok(false),
-      restoreOp: async () => ok(undefined),
-      trackedFiles: async () => ok([]),
-      setRemote: async () => ok(undefined),
-    },
+    repo: baseRepoService(),
     discovery: {
       scan: async () => ok({ queued: [], autoTracked: [] }),
       loadCached: async () => ok(null),

@@ -3,6 +3,7 @@ import type { Operation } from "../../src/domain/repo";
 import type { Services } from "../../src/composition/services";
 import { ok } from "../../src/lib/result";
 import type { RepoService } from "../../src/services/repo.service";
+import { baseRepoService } from "../test-utils/services-fake";
 import {
   initialRepoState,
   repoReducer,
@@ -153,16 +154,7 @@ describe("repoActor (effect)", () => {
   });
 
   test("send(restoreToOp) emits 'restored' and chains a refresh", async () => {
-    const fakeRepo: RepoService = {
-      head: async () => ok(op(0)),
-      operations: async () => ok([]),
-      syncState: async () =>
-        ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
-      dirty: async () => ok(false),
-      restoreOp: async () => ok(undefined),
-      trackedFiles: async () => ok([]),
-      setRemote: async () => ok(undefined),
-    };
+    const fakeRepo: RepoService = { ...baseRepoService(), head: async () => ok(op(0)) };
     const fakeRestore = {
       restoreToOp: async () => ok({ rematerialized: [] }),
       restoreFromBackup: async () =>

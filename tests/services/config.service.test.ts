@@ -36,10 +36,15 @@ function makeFakeRepo(initial: Result<Config, RepoError>): FakeRepo {
   };
 }
 
+function makeServiceWith(initial: Result<Config, RepoError>) {
+  const repo = makeFakeRepo(initial);
+  const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+  return { repo, svc };
+}
+
 describe("ConfigService", () => {
   test("loadOrInit writes defaults when repo reports NotFound", async () => {
-    const repo = makeFakeRepo(err({ tag: "NotFound", path: "/x" }));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { repo, svc } = makeServiceWith(err({ tag: "NotFound", path: "/x" }));
     const r = await svc.loadOrInit();
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toEqual(defaultConfig());
@@ -49,18 +54,16 @@ describe("ConfigService", () => {
   test("loadOrInit returns existing config without saving", async () => {
     const cfg = defaultConfig();
     cfg.options.auto_commit = false;
-    const repo = makeFakeRepo(ok(cfg));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { repo, svc } = makeServiceWith(ok(cfg));
     const r = await svc.loadOrInit();
     expect(r.ok && r.value.options.auto_commit).toBe(false);
     expect(repo.saveCount).toBe(0);
   });
 
   test("loadOrInit surfaces ParseError as Repository error and does not overwrite", async () => {
-    const repo = makeFakeRepo(
+    const { repo, svc } = makeServiceWith(
       err({ tag: "ParseError", path: "/x", issues: [{ message: "boom" }] }),
     );
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
     const r = await svc.loadOrInit();
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.tag).toBe("Repository");
@@ -68,16 +71,14 @@ describe("ConfigService", () => {
   });
 
   test("current() reflects last loaded value", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { svc } = makeServiceWith(ok(defaultConfig()));
     expect(svc.current()).toBeNull();
     await svc.loadOrInit();
     expect(svc.current()).toEqual(defaultConfig());
   });
 
   test("get() reads dotted paths and rejects unknown ones", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { svc } = makeServiceWith(ok(defaultConfig()));
     await svc.loadOrInit();
     const a = svc.get("discovery.auto_track");
     expect(a.ok && a.value).toBe(true);
@@ -87,15 +88,13 @@ describe("ConfigService", () => {
   });
 
   test("get() before load returns NotFound", () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { svc } = makeServiceWith(ok(defaultConfig()));
     const r = svc.get("discovery.auto_track");
     expect(r.ok).toBe(false);
   });
 
   test("set() persists a valid value and updates cache", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { repo, svc } = makeServiceWith(ok(defaultConfig()));
     await svc.loadOrInit();
     const r = await svc.set("discovery.auto_track", false);
     expect(r.ok).toBe(true);
@@ -105,8 +104,7 @@ describe("ConfigService", () => {
   });
 
   test("set() rejects wrong types via Validation and leaves state untouched", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { repo, svc } = makeServiceWith(ok(defaultConfig()));
     await svc.loadOrInit();
     const r = await svc.set("discovery.auto_track", "yes");
     expect(r.ok).toBe(false);
@@ -117,8 +115,7 @@ describe("ConfigService", () => {
   });
 
   test("set() rejects unknown option paths with NotFound", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { repo, svc } = makeServiceWith(ok(defaultConfig()));
     await svc.loadOrInit();
     const r = await svc.set("nope.x", 1);
     expect(r.ok).toBe(false);
@@ -127,8 +124,7 @@ describe("ConfigService", () => {
   });
 
   test("set() before load returns NotFound", async () => {
-    const repo = makeFakeRepo(ok(defaultConfig()));
-    const svc = createConfigService({ repo, defaults: () => defaultConfig() });
+    const { svc } = makeServiceWith(ok(defaultConfig()));
     const r = await svc.set("discovery.auto_track", false);
     expect(r.ok).toBe(false);
   });

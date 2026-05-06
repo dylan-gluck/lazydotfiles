@@ -26,6 +26,21 @@ function makeConfig(overrides: Partial<Config["discovery"]> = {}): Config {
 const c1 = makeCandidate({ path: "/h/.config/fish/config.fish", kind: "file", reason: "include" });
 const c2 = makeCandidate({ path: "/h/.config/git/config", kind: "file", reason: "include" });
 
+type CacheRepo = ReturnType<typeof createDiscoveryCacheRepository>;
+
+async function withCacheRepo<T>(fn: (repo: CacheRepo) => Promise<T>): Promise<T> {
+  return withTmpDir(async (dir) => {
+    const repo = createDiscoveryCacheRepository({
+      getDbPath: () => join(dir.path, "cache.db"),
+    });
+    try {
+      return await fn(repo);
+    } finally {
+      repo.close();
+    }
+  });
+}
+
 describe("discoveryConfigHash", () => {
   test("stable across argument order in objects, sensitive to include/exclude/home/auto_track", () => {
     const a = discoveryConfigHash(makeConfig());
@@ -52,25 +67,17 @@ describe("discoveryConfigHash", () => {
 
 describe("DiscoveryCacheRepository", () => {
   test("load() returns null when cache file is empty", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
+    await withCacheRepo(async (repo) => {
       const r = await repo.load(discoveryConfigHash(makeConfig()));
       expect(r.ok).toBe(true);
       if (!r.ok) return;
       expect(r.value).toBeNull();
-      repo.close();
     });
   });
 
   test("save() then load() round-trips the snapshot under matching hash", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
-      const cfg = makeConfig();
-      const hash = discoveryConfigHash(cfg);
+    await withCacheRepo(async (repo) => {
+      const hash = discoveryConfigHash(makeConfig());
       const w = await repo.save(hash, { queued: [c1, c2], autoTracked: ["/h/.zshrc"] });
       expect(w.ok).toBe(true);
       const r = await repo.load(hash);
@@ -79,22 +86,16 @@ describe("DiscoveryCacheRepository", () => {
       expect(r.value.queued.map((c) => c.path)).toEqual([c1.path, c2.path]);
       expect(r.value.autoTracked).toEqual(["/h/.zshrc"]);
       expect(typeof r.value.scannedAt).toBe("string");
-      repo.close();
     });
   });
 
   test("load() with mismatched hash returns null (treated as miss)", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
-      const cfg = makeConfig();
-      await repo.save(discoveryConfigHash(cfg), { queued: [c1], autoTracked: [] });
+    await withCacheRepo(async (repo) => {
+      await repo.save(discoveryConfigHash(makeConfig()), { queued: [c1], autoTracked: [] });
       const r = await repo.load(discoveryConfigHash(makeConfig({ include: [".bashrc"] })));
       expect(r.ok).toBe(true);
       if (!r.ok) return;
       expect(r.value).toBeNull();
-      repo.close();
     });
   });
 
@@ -113,12 +114,8 @@ describe("DiscoveryCacheRepository", () => {
   });
 
   test("removePath() drops a path from the cached snapshot", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
-      const cfg = makeConfig();
-      const hash = discoveryConfigHash(cfg);
+    await withCacheRepo(async (repo) => {
+      const hash = discoveryConfigHash(makeConfig());
       await repo.save(hash, { queued: [c1, c2], autoTracked: ["/h/.zshrc"] });
       const w = await repo.removePath(hash, c1.path);
       expect(w.ok).toBe(true);
@@ -127,30 +124,22 @@ describe("DiscoveryCacheRepository", () => {
       if (!r.ok || r.value === null) throw new Error("expected snapshot");
       expect(r.value.queued.map((c) => c.path)).toEqual([c2.path]);
       expect(r.value.autoTracked).toEqual(["/h/.zshrc"]);
-      repo.close();
     });
   });
 
   test("removePath() also drops auto-tracked entries", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
+    await withCacheRepo(async (repo) => {
       const hash = discoveryConfigHash(makeConfig());
       await repo.save(hash, { queued: [], autoTracked: ["/h/.zshrc", "/h/.bashrc"] });
       await repo.removePath(hash, "/h/.zshrc");
       const r = await repo.load(hash);
       if (!r.ok || r.value === null) throw new Error("expected snapshot");
       expect(r.value.autoTracked).toEqual(["/h/.bashrc"]);
-      repo.close();
     });
   });
 
   test("removePath() is a no-op when hash mismatches", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
+    await withCacheRepo(async (repo) => {
       const hash = discoveryConfigHash(makeConfig());
       await repo.save(hash, { queued: [c1], autoTracked: [] });
       const r = await repo.removePath("differenthash", c1.path);
@@ -159,15 +148,11 @@ describe("DiscoveryCacheRepository", () => {
       const got = await repo.load(hash);
       if (!got.ok || got.value === null) throw new Error("expected snapshot");
       expect(got.value.queued).toHaveLength(1);
-      repo.close();
     });
   });
 
   test("markDeferred / loadDeferred / unmarkDeferred persist a deferred set", async () => {
-    await withTmpDir(async (dir) => {
-      const repo = createDiscoveryCacheRepository({
-        getDbPath: () => join(dir.path, "cache.db"),
-      });
+    await withCacheRepo(async (repo) => {
       const empty = await repo.loadDeferred();
       expect(empty.ok && empty.value.length === 0).toBe(true);
 
@@ -184,7 +169,6 @@ describe("DiscoveryCacheRepository", () => {
       await repo.unmarkDeferred("/h/.config/fish/config.fish");
       const after = await repo.loadDeferred();
       expect(after.ok && after.value).toEqual(["/h/.config/git/config"]);
-      repo.close();
     });
   });
 

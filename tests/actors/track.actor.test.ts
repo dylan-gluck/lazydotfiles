@@ -105,23 +105,32 @@ describe("trackReducer", () => {
   });
 });
 
+function spawnRig(fakeTrack: TrackService) {
+  const services = { track: fakeTrack } as unknown as Services;
+  const runtime = createActorRuntime({ services });
+  runtime.spawn({ id: REPO_ACTOR_ID, initial: initialRepoState, reducer: repoReducer });
+  spawnTrackActor(runtime);
+  const actor = runtime.get<TrackState, TrackMessage, TrackEvent>(TRACK_ACTOR_ID);
+  return { runtime, actor };
+}
+
+async function drainInFlight(actor: ReturnType<typeof spawnRig>["actor"]): Promise<void> {
+  for (let i = 0; i < 20 && actor.getState().inFlight !== null; i++) {
+    await Promise.resolve();
+  }
+}
+
 describe("trackActor effect dispatch", () => {
   test("send(add) drives actor to idle and emits tracked", async () => {
     const fakeTrack: TrackService = {
       add: async () => ok(file),
       remove: async () => ok(file),
     };
-    const services = { track: fakeTrack } as unknown as Services;
-    const runtime = createActorRuntime({ services });
-    runtime.spawn({ id: REPO_ACTOR_ID, initial: initialRepoState, reducer: repoReducer });
-    spawnTrackActor(runtime);
-    const actor = runtime.get<TrackState, TrackMessage, TrackEvent>(TRACK_ACTOR_ID);
+    const { runtime, actor } = spawnRig(fakeTrack);
     const events: string[] = [];
     runtime.on<TrackEvent>("tracked", () => events.push("tracked"));
     actor.send({ kind: "add", payload: { path: "/h/.zshrc" } });
-    for (let i = 0; i < 20 && actor.getState().inFlight !== null; i++) {
-      await Promise.resolve();
-    }
+    await drainInFlight(actor);
     expect(actor.getState().inFlight).toBeNull();
     expect(events).toEqual(["tracked"]);
     runtime.dispose();
@@ -132,17 +141,11 @@ describe("trackActor effect dispatch", () => {
       add: async () => err({ tag: "InvalidTarget", reason: "missing", path: "/x" }),
       remove: async () => ok(file),
     };
-    const services = { track: fakeTrack } as unknown as Services;
-    const runtime = createActorRuntime({ services });
-    runtime.spawn({ id: REPO_ACTOR_ID, initial: initialRepoState, reducer: repoReducer });
-    spawnTrackActor(runtime);
-    const actor = runtime.get<TrackState, TrackMessage, TrackEvent>(TRACK_ACTOR_ID);
+    const { runtime, actor } = spawnRig(fakeTrack);
     const events: string[] = [];
     runtime.on<TrackEvent>("addFailed", () => events.push("addFailed"));
     actor.send({ kind: "add", payload: { path: "/x" } });
-    for (let i = 0; i < 20 && actor.getState().inFlight !== null; i++) {
-      await Promise.resolve();
-    }
+    await drainInFlight(actor);
     expect(actor.getState().lastError?.tag).toBe("InvalidTarget");
     expect(events).toEqual(["addFailed"]);
     runtime.dispose();

@@ -4,8 +4,7 @@ import type { UntrackedGroup, UseFilesPanel } from "../../controllers/files.cont
 import type { TrackedFile } from "../../domain/tracked-file";
 import { AlignedRow } from "../components/aligned-row";
 import { CodeBlock, type CodeLine } from "../components/code-block";
-import { ConfirmModal } from "../components/confirm-modal";
-import { useInputFocusEffect } from "../components/input-focus-context";
+import { MetaRow } from "../components/meta-row";
 import {
   type PanelBinding,
   usePublishPanelBindings,
@@ -15,6 +14,7 @@ import {
 import { Section } from "../components/section";
 import { SectionRow } from "../components/section-row";
 import { SectionTitle } from "../components/section-title";
+import { useTrackingConfirms } from "../components/tracking-confirms";
 import { relativeAge } from "../lib/relative-age";
 import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
@@ -42,9 +42,7 @@ const UNTRACKED_BINDINGS: readonly PanelBinding[] = [
   { keys: "s", description: "sync" },
 ];
 
-const TRACKED_EXTRAS: readonly PanelBinding[] = [
-  { keys: "shift+U", description: "untrack group" },
-];
+const TRACKED_EXTRAS: readonly PanelBinding[] = [{ keys: "shift+U", description: "untrack group" }];
 const UNTRACKED_EXTRAS: readonly PanelBinding[] = [
   { keys: "shift+T", description: "track group" },
   { keys: "shift+I", description: "ignore group" },
@@ -82,18 +80,17 @@ export function FilesPanel({
   const [column, setColumn] = useState<Column>("tracked");
   const [trackedIdx, setTrackedIdx] = useState(0);
   const [untrackedIdx, setUntrackedIdx] = useState(0);
-  const [pendingRemove, setPendingRemove] = useState<TrackedFile | null>(null);
-  const [pendingTrackGroup, setPendingTrackGroup] = useState<string | null>(null);
-  const [pendingIgnoreGroup, setPendingIgnoreGroup] = useState<string | null>(null);
-  const inputBlocked =
-    pendingRemove !== null || pendingTrackGroup !== null || pendingIgnoreGroup !== null;
-  useInputFocusEffect(inputBlocked);
+  const confirms = useTrackingConfirms({
+    onUntrack: (file) => model.remove(file.target),
+    onTrackGroup,
+    onIgnoreGroup,
+  });
+  const inputBlocked = confirms.active;
 
   const bindings: readonly PanelBinding[] =
     column === "tracked" ? TRACKED_BINDINGS : UNTRACKED_BINDINGS;
   usePublishPanelBindings(bindings);
-  const extras: readonly PanelBinding[] =
-    column === "tracked" ? TRACKED_EXTRAS : UNTRACKED_EXTRAS;
+  const extras: readonly PanelBinding[] = column === "tracked" ? TRACKED_EXTRAS : UNTRACKED_EXTRAS;
   usePublishPanelExtras(extras);
 
   // Clamp focus when row counts shrink.
@@ -158,7 +155,7 @@ export function FilesPanel({
         return;
       case "u":
         if (column === "tracked" && focusedTracked !== undefined) {
-          setPendingRemove(focusedTracked);
+          confirms.promptUntrack(focusedTracked);
         }
         return;
       case "d":
@@ -168,12 +165,12 @@ export function FilesPanel({
         return;
       case "t":
         if (column === "untracked" && focusedUntracked !== undefined) {
-          setPendingTrackGroup(focusedUntracked.segment);
+          confirms.promptTrackGroup(focusedUntracked.segment);
         }
         return;
       case "i":
         if (column === "untracked" && focusedUntracked !== undefined) {
-          setPendingIgnoreGroup(focusedUntracked.segment);
+          confirms.promptIgnoreGroup(focusedUntracked.segment);
         }
         return;
       case "return":
@@ -197,52 +194,14 @@ export function FilesPanel({
         />
         <box width={1} flexShrink={0} border={["right"]} borderColor={t.fg.muted} />
         <RightColumn
-          focused={column === "tracked" ? focusedTracked ?? null : null}
-          focusedUntracked={column === "untracked" ? focusedUntracked ?? null : null}
+          focused={column === "tracked" ? (focusedTracked ?? null) : null}
+          focusedUntracked={column === "untracked" ? (focusedUntracked ?? null) : null}
           home={model.home}
           dotfilesRoot={model.dotfilesRoot}
           preview={preview}
         />
       </box>
-      {pendingRemove !== null ? (
-        <ConfirmModal
-          title="Untrack file"
-          summary={`Untrack ${pendingRemove.target}? The symlink is replaced with the file at its current dotfiles content; jj history is preserved.`}
-          paths={[pendingRemove.target, pendingRemove.source]}
-          confirmLabel="Untrack"
-          onConfirm={() => {
-            model.remove(pendingRemove.target);
-            setPendingRemove(null);
-          }}
-          onCancel={() => setPendingRemove(null)}
-        />
-      ) : null}
-      {pendingTrackGroup !== null ? (
-        <ConfirmModal
-          title="Track group"
-          summary={`Track every pending candidate under ${pendingTrackGroup}? Each will be moved into the dotfiles repo and replaced with a symlink.`}
-          paths={[pendingTrackGroup]}
-          confirmLabel="Track"
-          onConfirm={() => {
-            onTrackGroup?.(pendingTrackGroup);
-            setPendingTrackGroup(null);
-          }}
-          onCancel={() => setPendingTrackGroup(null)}
-        />
-      ) : null}
-      {pendingIgnoreGroup !== null ? (
-        <ConfirmModal
-          title="Ignore group"
-          summary={`Defer every pending candidate under ${pendingIgnoreGroup}? Future scans will skip them.`}
-          paths={[pendingIgnoreGroup]}
-          confirmLabel="Ignore"
-          onConfirm={() => {
-            onIgnoreGroup?.(pendingIgnoreGroup);
-            setPendingIgnoreGroup(null);
-          }}
-          onCancel={() => setPendingIgnoreGroup(null)}
-        />
-      ) : null}
+      {confirms.modal}
     </box>
   );
 }
@@ -351,7 +310,10 @@ function RightColumn({
           label={truncateToWidth(tildify(focused.target, home), 56)}
           meta={focused.status}
         />
-        <MetaRow label="source" value={truncateToWidth(tildify(focused.source, home), META_VALUE_MAX)} />
+        <MetaRow
+          label="source"
+          value={truncateToWidth(tildify(focused.source, home), META_VALUE_MAX)}
+        />
         <MetaRow
           label="target"
           value={truncateToWidth(tildify(focused.target, home), META_VALUE_MAX)}
@@ -372,24 +334,5 @@ function RightColumn({
         )}
       </Section>
     </scrollbox>
-  );
-}
-
-const META_LABEL_WIDTH = 10;
-
-function MetaRow({
-  label,
-  value,
-}: {
-  readonly label: string;
-  readonly value: string;
-}): ReactNode {
-  const t = useTheme();
-  const padded = label.length >= META_LABEL_WIDTH ? label : label + " ".repeat(META_LABEL_WIDTH - label.length);
-  return (
-    <box flexDirection="row">
-      <text fg={t.fg.muted}>{padded}</text>
-      <text fg={t.fg.default}>{value}</text>
-    </box>
   );
 }

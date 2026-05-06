@@ -86,6 +86,7 @@ export function wireServices(deps: { home: string }): Services {
     fs,
     backups: backupRepo,
   });
+
   return {
     home: deps.home,
     config,

@@ -1,6 +1,7 @@
 import { formatServiceError } from "../../lib/format";
 import { KNOWN_OPTIONS } from "../../services/config.service";
 import type { CliDeps } from "../types";
+import { ensureConfigLoaded } from "./util";
 
 function coerce(raw: string): { ok: true; value: unknown } | { ok: false; reason: string } {
   if (raw === "true") return { ok: true, value: true };
@@ -17,14 +18,8 @@ function coerce(raw: string): { ok: true; value: unknown } | { ok: false; reason
 }
 
 export async function configHandler(rest: readonly string[], deps: CliDeps): Promise<number> {
-  // Ensure config is loaded (bootstrap.run() already did, but be defensive).
-  if (deps.services.config.current() === null) {
-    const loaded = await deps.services.config.loadOrInit();
-    if (!loaded.ok) {
-      deps.io.stderr(`${formatServiceError(loaded.error)}\n`);
-      return 2;
-    }
-  }
+  const ensured = await ensureConfigLoaded(deps);
+  if (ensured !== 0) return ensured;
 
   if (rest.length === 0) {
     const lines: string[] = [];

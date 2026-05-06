@@ -26,7 +26,6 @@
   "devDependencies": {
     "@tanstack/router-cli": "^1.166.39",
     "@types/bun": "latest",
-    "concurrently": "^9.2.1",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0"
   },

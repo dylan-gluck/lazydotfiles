@@ -95,26 +95,35 @@ function expandEffect(path: string, depth?: number): Effect<DiscoveryMessage, Se
   };
 }
 
-function commitAcceptEffect(path: string): Effect<DiscoveryMessage, Services> {
+function commitEffect(kind: "accept" | "defer", path: string): Effect<DiscoveryMessage, Services> {
   return async ({ config, discovery }) => {
     const cfg = await config.loadOrInit();
     if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
-    const r = await discovery.commitAccept(cfg.value, path);
+    const r =
+      kind === "accept"
+        ? await discovery.commitAccept(cfg.value, path)
+        : await discovery.commitDefer(cfg.value, path);
     return r.ok
       ? { kind: "commitAck", payload: undefined }
       : { kind: "scanFailed", payload: { error: r.error } };
   };
 }
 
-function commitDeferEffect(path: string): Effect<DiscoveryMessage, Services> {
-  return async ({ config, discovery }) => {
-    const cfg = await config.loadOrInit();
-    if (!cfg.ok) return { kind: "scanFailed", payload: { error: cfg.error } };
-    const r = await discovery.commitDefer(cfg.value, path);
-    return r.ok
-      ? { kind: "commitAck", payload: undefined }
-      : { kind: "scanFailed", payload: { error: r.error } };
-  };
+function readyEvents(
+  queued: readonly DiscoveryCandidate[],
+  autoTracked?: readonly string[],
+): DiscoveryEvent[] {
+  const events: DiscoveryEvent[] = [{ kind: "scanProgress", payload: { status: "ready" } }];
+  if (queued.length > 0) {
+    events.push({ kind: "candidateAdded", payload: { count: queued.length, reason: "include" } });
+  }
+  if (autoTracked !== undefined && autoTracked.length > 0) {
+    events.push({
+      kind: "candidateAdded",
+      payload: { count: autoTracked.length, reason: "auto" },
+    });
+  }
+  return events;
 }
 
 function applyDecision(
@@ -148,13 +157,6 @@ export const discoveryReducer: Reducer<
       };
     case "primed": {
       const { queued, autoTracked, scannedAt } = msg.payload;
-      const events: DiscoveryEvent[] = [{ kind: "scanProgress", payload: { status: "ready" } }];
-      if (queued.length > 0) {
-        events.push({
-          kind: "candidateAdded",
-          payload: { count: queued.length, reason: "include" },
-        });
-      }
       return {
         state: {
           status: "ready",
@@ -164,7 +166,7 @@ export const discoveryReducer: Reducer<
           refreshing: true,
           scannedAt,
         },
-        events,
+        events: readyEvents(queued),
         effects: [rescanEffect],
       };
     }
@@ -192,19 +194,6 @@ export const discoveryReducer: Reducer<
       };
     case "scanOk": {
       const { queued, autoTracked } = msg.payload;
-      const events: DiscoveryEvent[] = [{ kind: "scanProgress", payload: { status: "ready" } }];
-      if (queued.length > 0) {
-        events.push({
-          kind: "candidateAdded",
-          payload: { count: queued.length, reason: "include" },
-        });
-      }
-      if (autoTracked.length > 0) {
-        events.push({
-          kind: "candidateAdded",
-          payload: { count: autoTracked.length, reason: "auto" },
-        });
-      }
       return {
         state: {
           status: "ready",
@@ -214,7 +203,7 @@ export const discoveryReducer: Reducer<
           refreshing: false,
           scannedAt: new Date().toISOString(),
         },
-        events,
+        events: readyEvents(queued, autoTracked),
         effects: [],
       };
     }
@@ -259,60 +248,29 @@ export const discoveryReducer: Reducer<
         events: [],
         effects: [],
       };
-    case "accept": {
-      const next = applyDecision(state, msg.payload.id, "accepted");
-      if (next === null) return { state, events: [], effects: [] };
-      return {
-        state: next.state,
-        events: [
-          {
-            kind: "candidateDecided",
-            payload: { id: msg.payload.id, path: next.candidate.path, decision: "accept" },
-          },
-        ],
-        effects: [],
-      };
-    }
-    case "reject": {
-      const next = applyDecision(state, msg.payload.id, "rejected");
-      if (next === null) return { state, events: [], effects: [] };
-      return {
-        state: next.state,
-        events: [
-          {
-            kind: "candidateDecided",
-            payload: { id: msg.payload.id, path: next.candidate.path, decision: "reject" },
-          },
-        ],
-        effects: [],
-      };
-    }
+    case "accept":
+    case "reject":
     case "defer": {
-      const next = applyDecision(state, msg.payload.id, "deferred");
+      const decision = msg.kind;
+      const status: CandidateStatus =
+        decision === "accept" ? "accepted" : decision === "reject" ? "rejected" : "deferred";
+      const next = applyDecision(state, msg.payload.id, status);
       if (next === null) return { state, events: [], effects: [] };
       return {
         state: next.state,
         events: [
           {
             kind: "candidateDecided",
-            payload: { id: msg.payload.id, path: next.candidate.path, decision: "defer" },
+            payload: { id: msg.payload.id, path: next.candidate.path, decision },
           },
         ],
         effects: [],
       };
     }
     case "commitAccept":
-      return {
-        state,
-        events: [],
-        effects: [commitAcceptEffect(msg.payload.path)],
-      };
+      return { state, events: [], effects: [commitEffect("accept", msg.payload.path)] };
     case "commitDefer":
-      return {
-        state,
-        events: [],
-        effects: [commitDeferEffect(msg.payload.path)],
-      };
+      return { state, events: [], effects: [commitEffect("defer", msg.payload.path)] };
     case "commitAck":
       return { state, events: [], effects: [] };
     case "revertAcceptByPath": {

@@ -28,37 +28,43 @@ function capture(home: string): { io: Parameters<typeof runCli>[1]["io"]; cap: C
   };
 }
 
+interface CliRun {
+  readonly home: string;
+  readonly services: ReturnType<typeof wireServices>;
+  readonly cap: Capture;
+  readonly io: Parameters<typeof runCli>[1]["io"];
+  readonly code: number;
+}
+
+/** Run the CLI in a fresh tmp HOME with captured stdout/stderr. */
+async function runCliInTmp(args: readonly string[]): Promise<CliRun> {
+  return withTmpDir(async (home) => {
+    const services = wireServices({ home: home.path });
+    const { io, cap } = capture(home.path);
+    const code = await runCli(args, { services, io });
+    return { home: home.path, services, cap, io, code };
+  });
+}
+
 describe("runCli", () => {
   test("--help prints usage", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["--help"], { services, io });
-      expect(code).toBe(0);
-      expect(cap.out).toContain("usage:");
-    });
+    const { code, cap } = await runCliInTmp(["--help"]);
+    expect(code).toBe(0);
+    expect(cap.out).toContain("usage:");
   });
 
   test("unknown subcommand → exit 1", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["bogus"], { services, io });
-      expect(code).toBe(1);
-      expect(cap.err).toContain("unknown command");
-    });
+    const { code, cap } = await runCliInTmp(["bogus"]);
+    expect(code).toBe(1);
+    expect(cap.err).toContain("unknown command");
   });
 
   test("status on cold $HOME → exit 0 with structured fields", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["status"], { services, io });
-      expect(code).toBe(0);
-      expect(cap.out).toContain("tracked: 0 files");
-      expect(cap.out).toContain("queue:");
-      expect(cap.out).toContain("sync:");
-    });
+    const { code, cap } = await runCliInTmp(["status"]);
+    expect(code).toBe(0);
+    expect(cap.out).toContain("tracked: 0 files");
+    expect(cap.out).toContain("queue:");
+    expect(cap.out).toContain("sync:");
   });
 
   test("config get/set roundtrip", async () => {
@@ -80,13 +86,9 @@ describe("runCli", () => {
   });
 
   test("config bogus key → exit 1", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["config", "bogus.key"], { services, io });
-      expect(code).toBe(1);
-      expect(cap.err).toContain("unknown option");
-    });
+    const { code, cap } = await runCliInTmp(["config", "bogus.key"]);
+    expect(code).toBe(1);
+    expect(cap.err).toContain("unknown option");
   });
 
   test("add then rm roundtrip", async () => {
@@ -121,23 +123,15 @@ describe("runCli", () => {
   });
 
   test("log on fresh repo → exit 0, mentions an op", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["log"], { services, io });
-      expect(code).toBe(0);
-      // Either there is at least one op (jj init) or the empty marker.
-      expect(cap.out.length).toBeGreaterThan(0);
-    });
+    const { code, cap } = await runCliInTmp(["log"]);
+    expect(code).toBe(0);
+    // Either there is at least one op (jj init) or the empty marker.
+    expect(cap.out.length).toBeGreaterThan(0);
   });
 
   test("log bad --limit → exit 1", async () => {
-    await withTmpDir(async (home) => {
-      const services = wireServices({ home: home.path });
-      const { io, cap } = capture(home.path);
-      const code = await runCli(["log", "--limit", "foo"], { services, io });
-      expect(code).toBe(1);
-      expect(cap.err).toContain("bad value");
-    });
+    const { code, cap } = await runCliInTmp(["log", "--limit", "foo"]);
+    expect(code).toBe(1);
+    expect(cap.err).toContain("bad value");
   });
 });

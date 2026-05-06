@@ -15,9 +15,11 @@ import {
   type TrackedFileRepository,
 } from "../../src/repositories/tracked-file.repository";
 import type { RepoError } from "../../src/repositories/types";
+import { baseJjRepo } from "../test-utils/jj-fake";
 import { makeTmpDir, type TmpDir } from "../test-utils/tmp";
 import { createBackupService } from "../../src/services/backup.service";
 import { createTrackService, type TrackService } from "../../src/services/track.service";
+import type { TrackStep } from "../../src/services/types";
 
 interface JjCall {
   readonly cmd: "describe" | "snapshot" | "opRestore";
@@ -33,9 +35,7 @@ interface FakeJj extends JjRepository {
 function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): FakeJj {
   const callsArr: JjCall[] = [];
   const repo: JjRepository = {
-    kind: "JjRepository",
-    isRepo: async () => ok(true),
-    initColocated: async () => ok(undefined),
+    ...baseJjRepo(),
     describe: async ({ message }) => {
       callsArr.push({ cmd: "describe", message });
       if (faults.describe !== undefined) return err(faults.describe);
@@ -46,7 +46,6 @@ function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): Fa
       if (faults.snapshot !== undefined) return err(faults.snapshot);
       return ok(undefined);
     },
-    newChange: async () => ok(undefined),
     // The track service captures the head op pre-track and uses
     // `opRestore` as the canonical rollback for the describe/snapshot/new
     // triplet. Return a stable id so the test can assert the rollback path.
@@ -61,23 +60,10 @@ function fakeJj(faults: { describe?: RepoError; snapshot?: RepoError } = {}): Fa
           filesTouched: [],
         },
       ]),
-    log: async () => ok([]),
     opRestore: async ({ opId }) => {
       callsArr.push({ cmd: "opRestore", opId });
       return ok(undefined);
     },
-    logAtOp: async () => ok(null),
-    diffSummaryAtOp: async () => ok([]),
-    diffAtOp: async () => ok(""),
-    gitFetch: async () => ok(undefined),
-    gitPush: async () => ok(undefined),
-    status: async () =>
-      ok({ lastSyncAt: null, ahead: 0, behind: 0, dirty: false, remote: null, conflicts: [] }),
-    aheadBehind: async () => ok({ ahead: 0, behind: 0 }),
-    listConflicts: async () => ok([]),
-    gitRemoteSet: async () => ok(undefined),
-    gitRemoteList: async () => ok([]),
-    bookmarkSet: async () => ok(undefined),
   };
   return Object.assign(repo, { calls: callsArr, callsArr });
 }
@@ -164,6 +150,54 @@ afterEach(async () => {
     h = undefined;
   }
 });
+
+/**
+ * Add-rollback test scaffold: write a target file, run `service.add`, then
+ * assert the Rollback failed at the expected step and that the working tree
+ * is unchanged. Returns the result so the caller can pile on extra assertions.
+ */
+async function expectAddRollback(
+  harness: Harness,
+  expectedStep: TrackStep,
+): Promise<Awaited<ReturnType<TrackService["add"]>>> {
+  const target = join(harness.home, ".zshrc");
+  await writeFile(target, "orig", { mode: 0o600 });
+  const r = await harness.service.add(target);
+  expect(r.ok).toBe(false);
+  if (r.ok || r.error.tag !== "Rollback") return r;
+  expect(r.error.failedStep).toBe(expectedStep);
+  expect(await fileBytes(target)).toBe("orig");
+  expect(await isSymlink(target)).toBe(false);
+  expect(await Bun.file(join(harness.dotfilesRoot, ".zshrc")).exists()).toBe(false);
+  return r;
+}
+
+interface OverrideTrackServiceOpts {
+  readonly fs?: FsRepository;
+  readonly symlinks?: SymlinkRepository;
+  readonly jj?: JjRepository;
+  readonly backups?: ReturnType<typeof createBackupService>;
+  readonly now?: () => Date;
+}
+
+/**
+ * Build a track service reusing harness state but swapping in faulty deps.
+ * Centralizes the boilerplate for the rollback-branch tests in `remove`.
+ */
+function trackServiceWith(harness: Harness, opts: OverrideTrackServiceOpts): TrackService {
+  return createTrackService({
+    home: harness.home,
+    dotfilesRoot: harness.dotfilesRoot,
+    fs: opts.fs ?? harness.fs,
+    symlinks: opts.symlinks ?? harness.symlinks,
+    tracked: harness.tracked,
+    jj: opts.jj ?? harness.jj,
+    backups:
+      opts.backups ??
+      createBackupService({ repo: createBackupRepository({ backupRoot: harness.backupRoot }) }),
+    now: opts.now ?? (() => new Date("2026-05-01T16:30:42.123Z")),
+  });
+}
 
 async function fileBytes(path: string): Promise<string | null> {
   const f = Bun.file(path);
@@ -265,15 +299,7 @@ describe("TrackService.add — rollback branches", () => {
         move: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
       },
     });
-    const target = join(h.home, ".zshrc");
-    await writeFile(target, "orig", { mode: 0o600 });
-    const r = await h.service.add(target);
-    expect(r.ok).toBe(false);
-    if (r.ok || r.error.tag !== "Rollback") return;
-    expect(r.error.failedStep).toBe("move");
-    expect(await fileBytes(target)).toBe("orig");
-    expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
-    expect(await isSymlink(target)).toBe(false);
+    await expectAddRollback(h, "move");
   });
 
   test("A7: symlink fail → source moved back, no symlink", async () => {
@@ -282,30 +308,14 @@ describe("TrackService.add — rollback branches", () => {
         materialize: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
       },
     });
-    const target = join(h.home, ".zshrc");
-    await writeFile(target, "orig", { mode: 0o600 });
-    const r = await h.service.add(target);
-    expect(r.ok).toBe(false);
-    if (r.ok || r.error.tag !== "Rollback") return;
-    expect(r.error.failedStep).toBe("symlink");
-    expect(await fileBytes(target)).toBe("orig");
-    expect(await isSymlink(target)).toBe(false);
-    expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
+    await expectAddRollback(h, "symlink");
   });
 
   test("A8: jj describe fail → unwound to original state", async () => {
     h = await makeHarness({
       jjFaults: { describe: { tag: "Spawn", command: ["jj"], exitCode: 1, stderr: "" } },
     });
-    const target = join(h.home, ".zshrc");
-    await writeFile(target, "orig", { mode: 0o600 });
-    const r = await h.service.add(target);
-    expect(r.ok).toBe(false);
-    if (r.ok || r.error.tag !== "Rollback") return;
-    expect(r.error.failedStep).toBe("describe");
-    expect(await fileBytes(target)).toBe("orig");
-    expect(await isSymlink(target)).toBe(false);
-    expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
+    await expectAddRollback(h, "describe");
   });
 
   test("A9: record fail → unwound + jj op restore replayed", async () => {
@@ -314,15 +324,7 @@ describe("TrackService.add — rollback branches", () => {
         upsert: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
       },
     });
-    const target = join(h.home, ".zshrc");
-    await writeFile(target, "orig", { mode: 0o600 });
-    const r = await h.service.add(target);
-    expect(r.ok).toBe(false);
-    if (r.ok || r.error.tag !== "Rollback") return;
-    expect(r.error.failedStep).toBe("record");
-    expect(await fileBytes(target)).toBe("orig");
-    expect(await isSymlink(target)).toBe(false);
-    expect(await Bun.file(join(h.dotfilesRoot, ".zshrc")).exists()).toBe(false);
+    await expectAddRollback(h, "record");
     // Track only describes once (the real "track" message); the rollback
     // restores via jj op restore <preTrackOp>, not an empty describe.
     expect(h.jj.calls.filter((c) => c.cmd === "describe").length).toBe(1);
@@ -423,21 +425,11 @@ describe("TrackService.remove — rollback branches", () => {
     h = await makeHarness({});
     const target = await setupTracked(h);
     h.jj.callsArr.length = 0;
-    // Build a new harness reusing the on-disk state, with symlink unlink faulted.
-    const realSymlinks = createSymlinkRepository();
-    const symlinks = withFault(realSymlinks, {
+    const symlinks = withFault(createSymlinkRepository(), {
       unlink: () => err({ tag: "IoError", path: target, cause: new Error("boom") }),
     });
-    const service = createTrackService({
-      home: h.home,
-      dotfilesRoot: h.dotfilesRoot,
-      fs: h.fs,
+    const service = trackServiceWith(h, {
       symlinks,
-      tracked: h.tracked,
-      jj: h.jj,
-      backups: createBackupService({
-        repo: createBackupRepository({ backupRoot: h.backupRoot }),
-      }),
       now: () => new Date("2026-05-01T16:30:42.124Z"),
     });
     const r = await service.remove(target);
@@ -450,22 +442,10 @@ describe("TrackService.remove — rollback branches", () => {
   test("R6: copy fail → symlink restored, source intact", async () => {
     h = await makeHarness({});
     const target = await setupTracked(h);
-    const realFs = createFsRepository();
-    const fs = withFault(realFs, {
+    const fs = withFault(createFsRepository(), {
       copyFile: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
     });
-    const service = createTrackService({
-      home: h.home,
-      dotfilesRoot: h.dotfilesRoot,
-      fs,
-      symlinks: h.symlinks,
-      tracked: h.tracked,
-      jj: h.jj,
-      backups: createBackupService({
-        repo: createBackupRepository({ backupRoot: h.backupRoot }),
-      }),
-      now: () => new Date("2026-05-01T16:30:42.125Z"),
-    });
+    const service = trackServiceWith(h, { fs, now: () => new Date("2026-05-01T16:30:42.125Z") });
     const r = await service.remove(target);
     expect(r.ok).toBe(false);
     if (r.ok || r.error.tag !== "Rollback") return;
@@ -477,22 +457,10 @@ describe("TrackService.remove — rollback branches", () => {
   test("R7: remove source fail → target restored to symlink, source intact", async () => {
     h = await makeHarness({});
     const target = await setupTracked(h);
-    const realFs = createFsRepository();
-    const fs = withFault(realFs, {
+    const fs = withFault(createFsRepository(), {
       removeFile: () => err({ tag: "IoError", path: "/x", cause: new Error("boom") }),
     });
-    const service = createTrackService({
-      home: h.home,
-      dotfilesRoot: h.dotfilesRoot,
-      fs,
-      symlinks: h.symlinks,
-      tracked: h.tracked,
-      jj: h.jj,
-      backups: createBackupService({
-        repo: createBackupRepository({ backupRoot: h.backupRoot }),
-      }),
-      now: () => new Date("2026-05-01T16:30:42.126Z"),
-    });
+    const service = trackServiceWith(h, { fs, now: () => new Date("2026-05-01T16:30:42.126Z") });
     const r = await service.remove(target);
     expect(r.ok).toBe(false);
     if (r.ok || r.error.tag !== "Rollback") return;
@@ -508,16 +476,8 @@ describe("TrackService.remove — rollback branches", () => {
     const faultyJj = fakeJj({
       describe: { tag: "Spawn", command: ["jj"], exitCode: 1, stderr: "" },
     });
-    const service = createTrackService({
-      home: h.home,
-      dotfilesRoot: h.dotfilesRoot,
-      fs: h.fs,
-      symlinks: h.symlinks,
-      tracked: h.tracked,
+    const service = trackServiceWith(h, {
       jj: faultyJj,
-      backups: createBackupService({
-        repo: createBackupRepository({ backupRoot: h.backupRoot }),
-      }),
       now: () => new Date("2026-05-01T16:30:42.127Z"),
     });
     const r = await service.remove(target);
