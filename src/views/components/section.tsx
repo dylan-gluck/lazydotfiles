@@ -14,7 +14,7 @@ export function Section({ children }: SectionProps): ReactNode {
   return (
     <box
       flexDirection="column"
-      padding={1}
+      paddingX={1}
       border={["bottom"]}
       borderColor={t.fg.muted}
       flexGrow={0}

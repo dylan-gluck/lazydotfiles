@@ -16,15 +16,11 @@ export interface SectionTitleProps {
 export function SectionTitle({ label, meta }: SectionTitleProps): ReactNode {
   const t = useTheme();
   return (
-    <box flexDirection="row" justifyContent="space-between">
+    <box flexShrink={0} flexDirection="row" justifyContent="space-between">
       <text fg={t.fg.heading} attributes={TextAttributes.BOLD}>
         {label}
       </text>
-      {meta === undefined ? null : typeof meta === "string" ? (
-        <text fg={t.fg.muted}>{meta}</text>
-      ) : (
-        meta
-      )}
+      {meta && <text fg={t.fg.muted}>{meta}</text>}
     </box>
   );
 }

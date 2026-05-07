@@ -37,6 +37,8 @@ export function AppFooter({ label, bindings }: AppFooterProps): ReactNode {
       paddingLeft={1}
       paddingRight={1}
       justifyContent="space-between"
+      border={["top"]}
+      borderColor={t.fg.muted}
     >
       {label !== null ? (
         <box backgroundColor={t.fg.focus} paddingLeft={1} paddingRight={1} flexShrink={0}>
