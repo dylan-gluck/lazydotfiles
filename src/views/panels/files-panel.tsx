@@ -77,7 +77,7 @@ export function FilesPanel({
   const t = useTheme();
   usePublishPanelLabel("files");
 
-  const [column, setColumn] = useState<Column>("tracked");
+  const [column, setColumn] = useState<Column>("untracked");
   const [trackedIdx, setTrackedIdx] = useState(0);
   const [untrackedIdx, setUntrackedIdx] = useState(0);
   const confirms = useTrackingConfirms({
@@ -225,24 +225,6 @@ function LeftColumn({
   return (
     <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column">
       <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
-        <SectionTitle label="tracked" meta={`${tracked.length} · touched`} />
-        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
-          {tracked.length === 0 ? (
-            <text fg={t.fg.muted}>(no tracked files)</text>
-          ) : (
-            tracked.map((tf, i) => (
-              <AlignedRow
-                key={tf.id}
-                focused={column === "tracked" && i === trackedIdx}
-                left={truncateToWidth(tildify(tf.target, home), NAME_MAX)}
-                right={relativeAge(tf.addedAt)}
-              />
-            ))
-          )}
-        </scrollbox>
-      </box>
-      <box border={["bottom"]} borderColor={t.fg.muted} />
-      <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
         <SectionTitle
           label="untracked"
           meta={untrackedGroups.length === 0 ? "0" : `${untrackedGroups.length} · count`}
@@ -261,6 +243,24 @@ function LeftColumn({
                 dim
                 left={`▶ ${truncateToWidth(g.segment, QUEUE_MAX)}`}
                 right={String(g.count)}
+              />
+            ))
+          )}
+        </scrollbox>
+      </box>
+      <box border={["bottom"]} borderColor={t.fg.muted} />
+      <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
+        <SectionTitle label="tracked" meta={`${tracked.length} · touched`} />
+        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
+          {tracked.length === 0 ? (
+            <text fg={t.fg.muted}>(no tracked files)</text>
+          ) : (
+            tracked.map((tf, i) => (
+              <AlignedRow
+                key={tf.id}
+                focused={column === "tracked" && i === trackedIdx}
+                left={truncateToWidth(tildify(tf.target, home), NAME_MAX)}
+                right={relativeAge(tf.addedAt)}
               />
             ))
           )}
