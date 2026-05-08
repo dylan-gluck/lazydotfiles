@@ -1,11 +1,6 @@
 import { useKeyboard } from "@opentui/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import type {
-  UntrackedDirEntry,
-  UntrackedEntry,
-  UntrackedFileEntry,
-  UseFilesPanel,
-} from "../../controllers/files.controller";
+import type { UntrackedNode, UseFilesPanel } from "../../controllers/files.controller";
 import type { TrackedFile } from "../../domain/tracked-file";
 import { AlignedRow } from "../components/aligned-row";
 import { CodeBlock, type CodeLine } from "../components/code-block";
@@ -24,21 +19,18 @@ import { tildify, truncateToWidth } from "../lib/truncate-path";
 import { useTheme } from "../theme";
 
 const NAME_MAX = 32;
-const QUEUE_MAX = 32;
+const ROW_NAME_MAX = 40;
 const META_VALUE_MAX = 64;
 const PREVIEW_LINE_MAX = 96;
 const PREVIEW_MAX_LINES = 200;
-const CHILD_MAX = 30;
+const INDENT = "  ";
 
 type Column = "tracked" | "untracked";
 
-type Visible =
-  | { readonly row: "entry"; readonly entry: UntrackedEntry }
-  | {
-      readonly row: "child";
-      readonly parent: UntrackedDirEntry;
-      readonly child: UntrackedDirEntry["children"][number];
-    };
+interface VisibleRow {
+  readonly node: UntrackedNode;
+  readonly depth: number;
+}
 
 const TRACKED_BINDINGS: readonly PanelBinding[] = [
   { keys: "↑/↓", description: "select" },
@@ -65,20 +57,20 @@ const UNTRACKED_FILE_BINDINGS: readonly PanelBinding[] = [
 
 const TRACKED_EXTRAS: readonly PanelBinding[] = [{ keys: "shift+U", description: "untrack group" }];
 const UNTRACKED_EXTRAS: readonly PanelBinding[] = [
-  { keys: "shift+T", description: "track group" },
-  { keys: "shift+I", description: "ignore group" },
+  { keys: "shift+T", description: "track all" },
+  { keys: "shift+I", description: "ignore all" },
 ];
 
 export interface FilesPanelProps {
   readonly model: UseFilesPanel;
   /** Open the logs view filtered by a tracked file's target. */
   onViewLog?(target: string): void;
-  /** Track every pending candidate in this top-level segment. */
-  onTrackGroup?(segment: string): void;
-  /** Defer every pending candidate in this top-level segment. */
-  onIgnoreGroup?(segment: string): void;
-  /** Lazily fetch siblings under a top-level segment when first expanded. */
-  onExpandGroup?(segment: string): void;
+  /** Track every pending candidate at or under this absolute path. */
+  onTrackPath?(absPath: string): void;
+  /** Defer every pending candidate at or under this absolute path. */
+  onIgnorePath?(absPath: string): void;
+  /** Lazily list the contents of a directory the user is opening. */
+  onExpandDir?(absPath: string): void;
 }
 
 /**
@@ -90,9 +82,9 @@ export interface FilesPanelProps {
 export function FilesPanel({
   model,
   onViewLog,
-  onTrackGroup,
-  onIgnoreGroup,
-  onExpandGroup,
+  onTrackPath,
+  onIgnorePath,
+  onExpandDir,
 }: FilesPanelProps): ReactNode {
   const t = useTheme();
   usePublishPanelLabel("files");
@@ -104,37 +96,22 @@ export function FilesPanel({
   const [requested, setRequested] = useState<ReadonlySet<string>>(() => new Set());
   const confirms = useTrackingConfirms({
     onUntrack: (file) => model.remove(file.target),
-    onTrackGroup,
-    onIgnoreGroup,
+    onTrackGroup: onTrackPath,
+    onIgnoreGroup: onIgnorePath,
   });
   const inputBlocked = confirms.active;
 
-  const visible: readonly Visible[] = useMemo(() => {
-    const out: Visible[] = [];
-    for (const entry of model.untrackedEntries) {
-      out.push({ row: "entry", entry });
-      if (entry.kind === "dir" && expanded.has(entry.segment)) {
-        for (const child of entry.children.slice(0, CHILD_MAX)) {
-          out.push({ row: "child", parent: entry, child });
-        }
-      }
-    }
-    return out;
-  }, [model.untrackedEntries, expanded]);
+  const visible: readonly VisibleRow[] = useMemo(
+    () => flattenTree(model.untrackedTree, expanded),
+    [model.untrackedTree, expanded],
+  );
 
-  const focusedVisible: Visible | undefined = visible[untrackedIdx];
-
-  const focusedUntrackedEntry: UntrackedEntry | null =
-    focusedVisible === undefined
-      ? null
-      : focusedVisible.row === "entry"
-        ? focusedVisible.entry
-        : focusedVisible.parent;
+  const focusedNode: UntrackedNode | undefined = visible[untrackedIdx]?.node;
 
   const bindings: readonly PanelBinding[] =
     column === "tracked"
       ? TRACKED_BINDINGS
-      : focusedUntrackedEntry !== null && focusedUntrackedEntry.kind === "dir"
+      : focusedNode !== undefined && focusedNode.kind === "dir"
         ? UNTRACKED_DIR_BINDINGS
         : UNTRACKED_FILE_BINDINGS;
   usePublishPanelBindings(bindings);
@@ -153,11 +130,10 @@ export function FilesPanel({
   const focusedTracked: TrackedFile | undefined = model.tracked[trackedIdx];
   const focusedFilePath: string | null = useMemo(() => {
     if (column === "tracked") return focusedTracked?.source ?? null;
-    if (focusedVisible === undefined) return null;
-    if (focusedVisible.row === "child") return focusedVisible.child.path;
-    if (focusedVisible.entry.kind === "file") return focusedVisible.entry.path;
+    if (focusedNode === undefined) return null;
+    if (focusedNode.kind === "file") return focusedNode.path;
     return null;
-  }, [column, focusedTracked, focusedVisible]);
+  }, [column, focusedTracked, focusedNode]);
 
   // Load contents preview for whichever side is focused on a file.
   const [preview, setPreview] = useState<{ path: string; lines: readonly CodeLine[] } | null>(null);
@@ -185,21 +161,22 @@ export function FilesPanel({
     };
   }, [focusedFilePath, model]);
 
-  function toggleExpand(entry: UntrackedDirEntry): void {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(entry.segment)) next.delete(entry.segment);
-      else next.add(entry.segment);
-      return next;
-    });
-    if (!requested.has(entry.segment)) {
+  function toggleExpand(node: UntrackedNode): void {
+    if (node.kind !== "dir") return;
+    if (node.children.length === 0 && !requested.has(node.path)) {
       setRequested((prev) => {
         const next = new Set(prev);
-        next.add(entry.segment);
+        next.add(node.path);
         return next;
       });
-      onExpandGroup?.(entry.segment);
+      onExpandDir?.(node.path);
     }
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(node.path)) next.delete(node.path);
+      else next.add(node.path);
+      return next;
+    });
   }
 
   useKeyboard((event) => {
@@ -235,24 +212,19 @@ export function FilesPanel({
         }
         return;
       case "t":
-        if (column === "untracked" && focusedUntrackedEntry !== null) {
-          confirms.promptTrackGroup(focusedUntrackedEntry.segment);
+        if (column === "untracked" && focusedNode !== undefined) {
+          confirms.promptTrackGroup(focusedNode.path);
         }
         return;
       case "i":
-        if (column === "untracked" && focusedUntrackedEntry !== null) {
-          confirms.promptIgnoreGroup(focusedUntrackedEntry.segment);
+        if (column === "untracked" && focusedNode !== undefined) {
+          confirms.promptIgnoreGroup(focusedNode.path);
         }
         return;
       case "return":
       case "space":
-        if (
-          column === "untracked" &&
-          focusedVisible !== undefined &&
-          focusedVisible.row === "entry" &&
-          focusedVisible.entry.kind === "dir"
-        ) {
-          toggleExpand(focusedVisible.entry);
+        if (column === "untracked" && focusedNode !== undefined) {
+          toggleExpand(focusedNode);
         }
         return;
     }
@@ -275,22 +247,11 @@ export function FilesPanel({
           focused={
             column === "tracked"
               ? { kind: "tracked", file: focusedTracked ?? null }
-              : focusedVisible === undefined
+              : focusedNode === undefined
                 ? { kind: "empty" }
-                : focusedVisible.row === "child"
-                  ? {
-                      kind: "untracked-file",
-                      path: focusedVisible.child.path,
-                      tracked: focusedVisible.child.tracked,
-                    }
-                  : focusedVisible.entry.kind === "file"
-                    ? {
-                        kind: "untracked-file",
-                        path: focusedVisible.entry.path,
-                        tracked: false,
-                        candidateKind: focusedVisible.entry.candidateKind,
-                      }
-                    : { kind: "untracked-dir", entry: focusedVisible.entry }
+                : focusedNode.kind === "file"
+                  ? { kind: "untracked-file", node: focusedNode }
+                  : { kind: "untracked-dir", node: focusedNode }
           }
           home={model.home}
           dotfilesRoot={model.dotfilesRoot}
@@ -300,6 +261,21 @@ export function FilesPanel({
       {confirms.modal}
     </box>
   );
+}
+
+function flattenTree(
+  nodes: readonly UntrackedNode[],
+  expanded: ReadonlySet<string>,
+  depth = 0,
+  out: VisibleRow[] = [],
+): readonly VisibleRow[] {
+  for (const node of nodes) {
+    out.push({ node, depth });
+    if (node.kind === "dir" && node.children.length > 0 && expanded.has(node.path)) {
+      flattenTree(node.children, expanded, depth + 1, out);
+    }
+  }
+  return out;
 }
 
 function LeftColumn({
@@ -313,7 +289,7 @@ function LeftColumn({
 }: {
   readonly column: Column;
   readonly tracked: readonly TrackedFile[];
-  readonly visible: readonly Visible[];
+  readonly visible: readonly VisibleRow[];
   readonly home: string;
   readonly trackedIdx: number;
   readonly untrackedIdx: number;
@@ -327,48 +303,22 @@ function LeftColumn({
           label="untracked"
           meta={visible.length === 0 ? "0" : `${visible.length} · rows`}
         />
-        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
+        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false} paddingRight={1}>
           {visible.length === 0 ? (
             <box flexDirection="column">
               <text fg={t.fg.default}>No untracked candidates.</text>
               <text fg={t.fg.muted}>press r to rescan</text>
             </box>
           ) : (
-            visible.map((v, i) => {
+            visible.map((row, i) => {
               const focused = column === "untracked" && i === untrackedIdx;
-              if (v.row === "entry") {
-                if (v.entry.kind === "dir") {
-                  const open = expanded.has(v.entry.segment);
-                  const glyph = open ? "▼" : "▶";
-                  return (
-                    <AlignedRow
-                      key={`d:${v.entry.segment}`}
-                      focused={focused}
-                      left={`${glyph} ${truncateToWidth(v.entry.segment, QUEUE_MAX)}`}
-                      right={String(v.entry.count)}
-                    />
-                  );
-                }
-                return (
-                  <AlignedRow
-                    key={`f:${v.entry.path}`}
-                    focused={focused}
-                    left={`  ${truncateToWidth(v.entry.segment, QUEUE_MAX)}`}
-                    right={kindGlyph(v.entry.candidateKind)}
-                  />
-                );
-              }
               return (
-                <AlignedRow
-                  key={`c:${v.parent.segment}:${v.child.path}`}
+                <UntrackedRow
+                  key={row.node.path}
+                  node={row.node}
+                  depth={row.depth}
                   focused={focused}
-                  dim={!focused}
-                  left={`    ${truncateToWidth(leafName(v.child.path), QUEUE_MAX - 2)}`}
-                  right={
-                    <text fg={v.child.tracked ? t.fg.success : t.fg.muted}>
-                      {v.child.tracked ? "tracked" : "pending"}
-                    </text>
-                  }
+                  expanded={expanded.has(row.node.path)}
                 />
               );
             })
@@ -378,7 +328,7 @@ function LeftColumn({
       <box border={["bottom"]} borderColor={t.fg.muted} />
       <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" paddingX={1}>
         <SectionTitle label="tracked" meta={`${tracked.length} · touched`} />
-        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
+        <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false} paddingRight={1}>
           {tracked.length === 0 ? (
             <text fg={t.fg.muted}>(no tracked files)</text>
           ) : (
@@ -397,16 +347,32 @@ function LeftColumn({
   );
 }
 
+function UntrackedRow({
+  node,
+  depth,
+  focused,
+  expanded,
+}: {
+  readonly node: UntrackedNode;
+  readonly depth: number;
+  readonly focused: boolean;
+  readonly expanded: boolean;
+}): ReactNode {
+  const indent = INDENT.repeat(depth);
+  if (node.kind === "dir") {
+    const glyph = expanded ? "▼" : "▶";
+    const label = `${indent}${glyph} ${truncateToWidth(node.name, ROW_NAME_MAX - depth * INDENT.length)}`;
+    return <AlignedRow focused={focused} left={label} right={String(node.count)} />;
+  }
+  const label = `${indent}  ${truncateToWidth(node.name, ROW_NAME_MAX - depth * INDENT.length)}`;
+  return <AlignedRow focused={focused} left={label} />;
+}
+
 type RightFocus =
   | { readonly kind: "empty" }
   | { readonly kind: "tracked"; readonly file: TrackedFile | null }
-  | {
-      readonly kind: "untracked-file";
-      readonly path: string;
-      readonly tracked: boolean;
-      readonly candidateKind?: UntrackedFileEntry["candidateKind"];
-    }
-  | { readonly kind: "untracked-dir"; readonly entry: UntrackedDirEntry };
+  | { readonly kind: "untracked-file"; readonly node: UntrackedNode }
+  | { readonly kind: "untracked-dir"; readonly node: UntrackedNode };
 
 function RightColumn({
   focused,
@@ -467,16 +433,13 @@ function RightColumn({
     );
   }
   if (focused.kind === "untracked-file") {
-    const path = focused.path;
+    const node = focused.node;
     return (
       <scrollbox flexBasis={0} flexGrow={1} flexShrink={1} scrollY scrollX={false}>
         <Section>
-          <SectionTitle
-            label={truncateToWidth(tildify(path, home), 56)}
-            meta={focused.tracked ? "tracked" : "untracked"}
-          />
-          <MetaRow label="path" value={truncateToWidth(tildify(path, home), META_VALUE_MAX)} />
-          <MetaRow label="kind" value={focused.candidateKind ?? "file"} />
+          <SectionTitle label={truncateToWidth(tildify(node.path, home), 56)} meta="untracked" />
+          <MetaRow label="path" value={truncateToWidth(tildify(node.path, home), META_VALUE_MAX)} />
+          <MetaRow label="kind" value={node.candidateKind ?? "file"} />
           <MetaRow
             label="dotfiles"
             value={dotfilesRoot === null ? "(unset)" : tildify(dotfilesRoot, home)}
@@ -493,11 +456,12 @@ function RightColumn({
       </scrollbox>
     );
   }
-  const dir = focused.entry;
+  const dir = focused.node;
+  const meta = dir.candidateKind === null ? "intermediate dir" : "untracked dir";
   return (
     <scrollbox flexBasis={0} flexGrow={1} flexShrink={1} scrollY scrollX={false}>
       <Section>
-        <SectionTitle label={truncateToWidth(tildify(dir.path, home), 56)} meta="untracked group" />
+        <SectionTitle label={truncateToWidth(tildify(dir.path, home), 56)} meta={meta} />
         <MetaRow label="path" value={truncateToWidth(tildify(dir.path, home), META_VALUE_MAX)} />
         <MetaRow label="kind" value="directory" />
         <MetaRow label="pending" value={String(dir.count)} />
@@ -508,17 +472,17 @@ function RightColumn({
         />
       </Section>
       <Section>
-        <SectionTitle label="files" meta="T track all · I ignore all" />
+        <SectionTitle label="files" meta="space to expand · T track all · I ignore all" />
         {dir.children.length === 0 ? (
-          <text fg={t.fg.muted}>(no children loaded — press ↵ to expand)</text>
+          <text fg={t.fg.muted}>(no children)</text>
         ) : (
           dir.children.map((c) => (
             <AlignedRow
               key={c.path}
               left={truncateToWidth(tildify(c.path, home), META_VALUE_MAX)}
               right={
-                <text fg={c.tracked ? t.fg.success : t.fg.muted}>
-                  {c.tracked ? "tracked" : "pending"}
+                <text fg={t.fg.muted}>
+                  {c.kind === "dir" ? `${c.count} pending` : (c.candidateKind ?? "file")}
                 </text>
               }
             />
@@ -527,20 +491,4 @@ function RightColumn({
       </Section>
     </scrollbox>
   );
-}
-
-function leafName(absPath: string): string {
-  const slash = absPath.lastIndexOf("/");
-  return slash === -1 ? absPath : absPath.slice(slash + 1);
-}
-
-function kindGlyph(kind: UntrackedFileEntry["candidateKind"]): string {
-  switch (kind) {
-    case "directory":
-      return "dir";
-    case "template":
-      return "tpl";
-    default:
-      return "file";
-  }
 }

@@ -35,14 +35,22 @@ function makeConfig(overrides: Partial<Config["discovery"]> = {}): Config {
   };
 }
 
-function fakeScanner(yields: readonly string[]): FsScannerRepository {
+function fakeScanner(
+  yields: readonly (string | { path: string; isDir: boolean })[],
+): FsScannerRepository {
   return {
     kind: "FsScannerRepository",
     async *scan() {
-      for (const p of yields) yield p;
+      for (const p of yields) {
+        if (typeof p === "string") yield { path: p, isDir: false };
+        else yield p;
+      }
     },
     async siblings() {
       return ok([] as readonly string[]);
+    },
+    async listChildren() {
+      return ok([] as readonly { path: string; isDir: boolean }[]);
     },
   };
 }
@@ -256,6 +264,9 @@ describe("discovery.service.expandSiblings", () => {
           observed = depth;
           return ok(["/h/.config/fish/functions/greet.fish"]);
         },
+        async listChildren() {
+          return ok([]);
+        },
       },
     });
     const r = await svc.expandSiblings("/h/.config/fish/config.fish");
@@ -276,12 +287,44 @@ describe("discovery.service.expandSiblings", () => {
         > {
           return err({ tag: "IoError", path: "/h", cause: new Error("nope") });
         },
+        async listChildren() {
+          return ok([]);
+        },
       },
     });
     const r = await svc.expandSiblings("/h/x", 2);
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.error.tag).toBe("Repository");
+  });
+});
+
+describe("discovery.service.expandChildren", () => {
+  test("returns dir + file candidates and applies excludes", async () => {
+    const svc = createDiscoveryService({
+      scanner: {
+        kind: "FsScannerRepository",
+        async *scan() {},
+        async siblings() {
+          return ok([]);
+        },
+        async listChildren() {
+          return ok([
+            { path: "/h/.claude/settings.json", isDir: false },
+            { path: "/h/.claude/.DS_Store", isDir: false },
+            { path: "/h/.claude/notes", isDir: true },
+          ]);
+        },
+      },
+    });
+    const r = await svc.expandChildren(makeConfig({ exclude: ["**/.DS_Store"] }), "/h/.claude");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.map((c) => `${c.kind}:${c.path}`)).toEqual([
+      "file:/h/.claude/settings.json",
+      "directory:/h/.claude/notes",
+    ]);
+    expect(r.value.every((c) => c.reason === "sibling-of")).toBe(true);
   });
 });
 

@@ -1,4 +1,3 @@
-import { TextAttributes } from "@opentui/core";
 import type { ReactNode } from "react";
 import { useTheme } from "../theme";
 
@@ -56,26 +55,19 @@ export function CodeBlock({
         }
         const fg =
           kind === "add"
-            ? t.fg.default
+            ? t.fg.success
             : kind === "del"
               ? t.fg.danger
               : kind === "hunk"
                 ? t.fg.muted
                 : t.fg.default;
-        const attrs = kind === "add" ? TextAttributes.BOLD : undefined;
         return (
           <box key={i} flexDirection="row" gap={1}>
             <box width={NUM_WIDTH} flexShrink={0}>
               <text fg={t.fg.muted}>{num.length > 0 ? num : " ".repeat(NUM_WIDTH)}</text>
             </box>
             <box flexGrow={1} flexShrink={1} overflow="hidden">
-              {attrs === undefined ? (
-                <text fg={fg}>{ln.text}</text>
-              ) : (
-                <text fg={fg} attributes={attrs}>
-                  {ln.text}
-                </text>
-              )}
+              <text fg={fg}>{ln.text}</text>
             </box>
           </box>
         );

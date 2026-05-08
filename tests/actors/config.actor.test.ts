@@ -52,6 +52,7 @@ function makeServices(config: ConfigService): Services {
       commitAccept: async () => ok(undefined),
       commitDefer: async () => ok(undefined),
       expandSiblings: async () => ok([]),
+      expandChildren: async () => ok([]),
       decide: (c) => c,
     },
     backups: {

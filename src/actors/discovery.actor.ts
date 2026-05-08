@@ -31,6 +31,7 @@ export type DiscoveryMessage =
   | Message<"scanOk", { queued: readonly DiscoveryCandidate[]; autoTracked: readonly string[] }>
   | Message<"scanFailed", { error: ServiceError }>
   | Message<"expand", { path: string; depth?: number }>
+  | Message<"expandDir", { path: string; depth?: number }>
   | Message<"expandOk", { siblings: readonly DiscoveryCandidate[] }>
   | Message<"expandFailed", { error: ServiceError }>
   | Message<"accept", { id: string }>
@@ -89,6 +90,17 @@ const primeEffect: Effect<DiscoveryMessage, Services> = async ({ config, discove
 function expandEffect(path: string, depth?: number): Effect<DiscoveryMessage, Services> {
   return async ({ discovery }) => {
     const r = await discovery.expandSiblings(path, depth);
+    return r.ok
+      ? { kind: "expandOk", payload: { siblings: r.value } }
+      : { kind: "expandFailed", payload: { error: r.error } };
+  };
+}
+
+function expandDirEffect(path: string, depth?: number): Effect<DiscoveryMessage, Services> {
+  return async ({ config, discovery }) => {
+    const cfg = await config.loadOrInit();
+    if (!cfg.ok) return { kind: "expandFailed", payload: { error: cfg.error } };
+    const r = await discovery.expandChildren(cfg.value, path, depth);
     return r.ok
       ? { kind: "expandOk", payload: { siblings: r.value } }
       : { kind: "expandFailed", payload: { error: r.error } };
@@ -246,6 +258,12 @@ export const discoveryReducer: Reducer<
         state,
         events: [],
         effects: [expandEffect(msg.payload.path, msg.payload.depth)],
+      };
+    case "expandDir":
+      return {
+        state,
+        events: [],
+        effects: [expandDirEffect(msg.payload.path, msg.payload.depth)],
       };
     case "expandOk": {
       const seen = new Set(state.queue.map((c) => c.id));

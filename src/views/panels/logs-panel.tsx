@@ -201,12 +201,12 @@ function RevisionList({
 }): ReactNode {
   const t = useTheme();
   return (
-    <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" padding={1}>
+    <box flexBasis={0} flexGrow={1} flexShrink={1} flexDirection="column" paddingX={1}>
       <SectionTitle
         label="revisions"
         meta={operations.length === 0 ? "0" : `${operations.length} · ${operations.length} total`}
       />
-      <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false}>
+      <scrollbox flexGrow={1} flexShrink={1} scrollY scrollX={false} paddingRight={1}>
         {operations.length === 0 && status === "ready" ? (
           <text fg={t.fg.muted}>(no operations)</text>
         ) : null}

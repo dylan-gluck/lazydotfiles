@@ -29,15 +29,37 @@ describe("FsScannerRepository.scan", () => {
     await touch(".env.example");
     const scanner = createFsScannerRepository();
     const out: string[] = [];
-    for await (const p of scanner.scan({
+    for await (const e of scanner.scan({
       home: dir.path,
       include: [".zshrc", ".config/**/*", ".env*"],
       exclude: [".env*", "!.env.example"],
     })) {
-      out.push(p);
+      if (e.isDir) continue;
+      out.push(e.path);
     }
     const rel = out.map((p) => p.slice(dir.path.length + 1)).sort();
     expect(rel).toEqual([".config/fish/config.fish", ".env.example", ".zshrc"]);
+  });
+
+  test("yields directories that match include rules", async () => {
+    await touch(".claude/settings.json");
+    await touch(".bashrc");
+    const scanner = createFsScannerRepository();
+    const dirs: string[] = [];
+    const files: string[] = [];
+    for await (const e of scanner.scan({
+      home: dir.path,
+      include: [".*"],
+      exclude: [],
+    })) {
+      const rel = e.path.slice(dir.path.length + 1);
+      if (e.isDir) dirs.push(rel);
+      else files.push(rel);
+    }
+    expect(dirs).toContain(".claude");
+    expect(files).toContain(".bashrc");
+    // `.*` must not cross slashes — so `.claude/settings.json` is not yielded.
+    expect(files).not.toContain(".claude/settings.json");
   });
 
   test("skips .git and node_modules", async () => {
@@ -46,12 +68,13 @@ describe("FsScannerRepository.scan", () => {
     await touch("node_modules/foo/index.js");
     const scanner = createFsScannerRepository();
     const out: string[] = [];
-    for await (const p of scanner.scan({
+    for await (const e of scanner.scan({
       home: dir.path,
       include: ["**/*"],
       exclude: [],
     })) {
-      out.push(p);
+      if (e.isDir) continue;
+      out.push(e.path);
     }
     const rel = out.map((p) => p.slice(dir.path.length + 1));
     expect(rel).toContain(".zshrc");

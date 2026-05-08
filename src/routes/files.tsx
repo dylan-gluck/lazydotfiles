@@ -5,7 +5,7 @@ import { REPO_ACTOR_ID, type RepoMessage } from "../actors/repo.actor";
 import { useActor } from "../actors/use-actor";
 import { useFilesPanel } from "../controllers/files.controller";
 import { FilesPanel } from "../views/panels/files-panel";
-import { useDecideGroup } from "../lib/use-decide-group";
+import { useDecidePath } from "../lib/use-decide-group";
 
 export const Route = createFileRoute("/files")({ component: Files });
 
@@ -14,13 +14,12 @@ function Files() {
   const router = useRouter();
   const repo = useActor<unknown, RepoMessage>(REPO_ACTOR_ID);
   const discovery = useActor<unknown, DiscoveryMessage>(DISCOVERY_ACTOR_ID);
-  const home = model.home;
 
   useEffect(() => {
     repo.send({ kind: "refresh", payload: undefined });
   }, []);
 
-  const decideGroup = useDecideGroup(home);
+  const decidePath = useDecidePath();
 
   return (
     <FilesPanel
@@ -28,12 +27,9 @@ function Files() {
       onViewLog={() => {
         void router.navigate({ to: "/logs" });
       }}
-      onTrackGroup={(segment) => decideGroup(segment, "accept")}
-      onIgnoreGroup={(segment) => decideGroup(segment, "defer")}
-      onExpandGroup={(segment) => {
-        const root = home.length > 0 ? `${home}/${segment}` : segment;
-        discovery.send({ kind: "expand", payload: { path: root } });
-      }}
+      onTrackPath={(path) => decidePath(path, "accept")}
+      onIgnorePath={(path) => decidePath(path, "defer")}
+      onExpandDir={(path) => discovery.send({ kind: "expandDir", payload: { path } })}
     />
   );
 }

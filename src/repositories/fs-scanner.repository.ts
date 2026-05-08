@@ -3,17 +3,31 @@ import { basename, dirname, join, relative, sep } from "node:path";
 import { err, ok, type Result } from "../lib/result";
 import type { RepoError } from "./types";
 
+export interface ScannedEntry {
+  readonly path: string;
+  readonly isDir: boolean;
+}
+
 export interface FsScannerRepository {
   readonly kind: "FsScannerRepository";
   scan(opts: {
     readonly home: string;
     readonly include: readonly string[];
     readonly exclude: readonly string[];
-  }): AsyncIterable<string>;
+  }): AsyncIterable<ScannedEntry>;
   siblings(opts: {
     readonly path: string;
     readonly depth: number;
   }): Promise<Result<readonly string[], RepoError>>;
+  /**
+   * Direct (or up to `depth`) descendants of a directory, including
+   * sub-directories. Honors HARD_STOP_DIRS. Used by the files panel to lazily
+   * fill in a dir node the user is expanding.
+   */
+  listChildren(opts: {
+    readonly path: string;
+    readonly depth?: number;
+  }): Promise<Result<readonly ScannedEntry[], RepoError>>;
 }
 
 /**
@@ -112,6 +126,21 @@ export function classifyPath(
   return classifyCompiled(relPath, compileRules(include, exclude));
 }
 
+/**
+ * Pure: apply only the exclude rules. Used by the lazy dir-expansion path,
+ * where the user explicitly opened a directory and wants to see everything
+ * inside that hasn't been blacklisted (e.g. `.DS_Store`, `.env*`).
+ */
+export function isExcludedPath(relPath: string, exclude: readonly string[]): boolean {
+  const compiled = exclude.map(compile);
+  let state: "keep" | "drop" = "keep";
+  for (const rule of compiled) {
+    if (!rule.glob.match(relPath)) continue;
+    state = rule.negate ? "keep" : "drop";
+  }
+  return state === "drop";
+}
+
 function toRel(home: string, abs: string): string {
   // Always forward-slash for glob matching, even on Windows-flavored paths.
   return relative(home, abs).split(sep).join("/");
@@ -174,13 +203,54 @@ export function createFsScannerRepository(): FsScannerRepository {
       const rules = compileRules(include, exclude);
       const seen = new Set<string>();
       for await (const entry of walk(home)) {
-        if (entry.isDir) continue;
         const rel = toRel(home, entry.path);
         if (classifyCompiled(rel, rules) !== "include") continue;
         if (seen.has(entry.path)) continue;
         seen.add(entry.path);
-        yield entry.path;
+        yield { path: entry.path, isDir: entry.isDir };
       }
+    },
+
+    async listChildren({ path, depth }) {
+      const max = depth ?? 1;
+      let entries;
+      try {
+        entries = await readdir(path, { withFileTypes: true });
+      } catch (cause) {
+        return err({ tag: "IoError", path, cause });
+      }
+      const out: ScannedEntry[] = [];
+      const queue: { dir: string; remaining: number }[] = [];
+      for (const entry of entries) {
+        const full = join(path, entry.name);
+        if (entry.isDirectory()) {
+          if (HARD_STOP_DIRS.has(entry.name)) continue;
+          out.push({ path: full, isDir: true });
+          if (max > 1) queue.push({ dir: full, remaining: max - 1 });
+        } else if (entry.isFile() || entry.isSymbolicLink()) {
+          out.push({ path: full, isDir: false });
+        }
+      }
+      while (queue.length > 0) {
+        const head = queue.shift()!;
+        let sub;
+        try {
+          sub = await readdir(head.dir, { withFileTypes: true });
+        } catch {
+          continue;
+        }
+        for (const entry of sub) {
+          const full = join(head.dir, entry.name);
+          if (entry.isDirectory()) {
+            if (HARD_STOP_DIRS.has(entry.name)) continue;
+            out.push({ path: full, isDir: true });
+            if (head.remaining > 1) queue.push({ dir: full, remaining: head.remaining - 1 });
+          } else if (entry.isFile() || entry.isSymbolicLink()) {
+            out.push({ path: full, isDir: false });
+          }
+        }
+      }
+      return ok(out);
     },
 
     async siblings({ path, depth }) {

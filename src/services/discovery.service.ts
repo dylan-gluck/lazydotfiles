@@ -1,4 +1,4 @@
-import { relative } from "node:path";
+import { relative, sep } from "node:path";
 import { type DiscoveryCandidate, makeCandidate } from "../domain/candidate";
 import type { Config } from "../domain/config";
 import { err, ok, type Result } from "../lib/result";
@@ -6,7 +6,11 @@ import {
   type DiscoveryCacheRepository,
   discoveryConfigHash,
 } from "../repositories/discovery-cache.repository";
-import { type FsScannerRepository, isGlobPattern } from "../repositories/fs-scanner.repository";
+import {
+  type FsScannerRepository,
+  isExcludedPath,
+  isGlobPattern,
+} from "../repositories/fs-scanner.repository";
 import type { ServiceError } from "./types";
 
 export type DecisionKind = "accept" | "reject" | "defer";
@@ -31,6 +35,16 @@ export interface DiscoveryService {
    */
   commitDefer(config: Config, path: string): Promise<Result<void, ServiceError>>;
   expandSiblings(
+    path: string,
+    depth?: number,
+  ): Promise<Result<readonly DiscoveryCandidate[], ServiceError>>;
+  /**
+   * List the immediate (or up to `depth`) descendants of a directory the user
+   * is expanding. Honors the config's exclude rules; ignores include rules
+   * because the user opened the dir explicitly.
+   */
+  expandChildren(
+    config: Config,
     path: string,
     depth?: number,
   ): Promise<Result<readonly DiscoveryCandidate[], ServiceError>>;
@@ -84,20 +98,27 @@ export function createDiscoveryService(deps: DiscoveryServiceDeps): DiscoverySer
         deferredSet = new Set(dr.value);
       }
 
-      for await (const abs of deps.scanner.scan({
+      for await (const entry of deps.scanner.scan({
         home,
         include: config.discovery.include,
         exclude: config.discovery.exclude,
       })) {
+        const abs = entry.path;
         if (deferredSet.has(abs)) continue;
-        if (auto && isAutoTrackPath(abs, home, config.discovery.include)) {
+        if (!entry.isDir && auto && isAutoTrackPath(abs, home, config.discovery.include)) {
           if (deps.autoTrack !== undefined) {
             const r = await deps.autoTrack(abs);
             if (!r.ok) return err(r.error);
           }
           autoTracked.push(abs);
         } else {
-          queued.push(makeCandidate({ path: abs, kind: "file", reason: "include" }));
+          queued.push(
+            makeCandidate({
+              path: abs,
+              kind: entry.isDir ? "directory" : "file",
+              reason: "include",
+            }),
+          );
         }
       }
       if (deps.cache !== undefined) {
@@ -134,6 +155,26 @@ export function createDiscoveryService(deps: DiscoveryServiceDeps): DiscoverySer
       const r = await deps.scanner.siblings({ path, depth: depth ?? DEFAULT_SIBLING_DEPTH });
       if (!r.ok) return err({ tag: "Repository", cause: r.error });
       return ok(r.value.map((p) => makeCandidate({ path: p, kind: "file", reason: "sibling-of" })));
+    },
+
+    async expandChildren(config, path, depth) {
+      const r = await deps.scanner.listChildren({ path, depth: depth ?? 1 });
+      if (!r.ok) return err({ tag: "Repository", cause: r.error });
+      const home = config.path.home;
+      const excludes = config.discovery.exclude;
+      const out: DiscoveryCandidate[] = [];
+      for (const entry of r.value) {
+        const rel = relative(home, entry.path).split(sep).join("/");
+        if (isExcludedPath(rel, excludes)) continue;
+        out.push(
+          makeCandidate({
+            path: entry.path,
+            kind: entry.isDir ? "directory" : "file",
+            reason: "sibling-of",
+          }),
+        );
+      }
+      return ok(out);
     },
 
     decide(candidate, decision) {

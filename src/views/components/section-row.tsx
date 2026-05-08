@@ -23,7 +23,7 @@ export function SectionRow({ focused, margin, body }: SectionRowProps): ReactNod
   const cursorColor = focused === true ? t.fg.focus : t.fg.default;
   return (
     <box flexDirection="row" gap={2}>
-      <box width={1}>
+      <box width={1} flexGrow={0} flexShrink={0}>
         <text fg={cursorColor}>{cursorChar}</text>
       </box>
       <box flexBasis={12} flexGrow={0} flexShrink={0} flexDirection="row" justifyContent="flex-end">

@@ -189,6 +189,7 @@ describe("discovery actor (effect)", () => {
       commitAccept: async () => ok(undefined),
       commitDefer: async () => ok(undefined),
       expandSiblings: async () => ok([]),
+      expandChildren: async () => ok([]),
       decide: (c, d) => ({ ...c, status: d === "accept" ? "accepted" : "pending" }),
     };
     const fakeConfig = {
